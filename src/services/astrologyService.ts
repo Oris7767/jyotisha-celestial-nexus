@@ -1,4 +1,3 @@
-
 import swisseph from 'swisseph';
 import { BirthDetails, ChartData, PlanetaryPosition } from "@/types/astrology";
 
@@ -150,7 +149,7 @@ type HouseCalcResult = {
 };
 
 // Tính toán cung mọc một cách an toàn
-const safeCalculateHouses = (julianDay: number, flags: number, latitude: number, longitude: number, system: string): HouseCalcResult => {
+const safeCalculateHouses = (julianDay: number, flags: number, latitude: number, longitude: number, system: 'P' | 'K' | 'O' | 'R' | 'C' | 'E' | 'V' | 'X' | 'H' | 'T' | 'B' | 'G' | 'M' | 'U'): HouseCalcResult => {
   try {
     return swisseph.swe_houses(julianDay, flags, latitude, longitude, system);
   } catch (error) {

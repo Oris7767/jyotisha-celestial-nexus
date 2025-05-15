@@ -2,6 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchChartData, fetchPlanetaryPositions, fetchAscendant, fetchDashas } from './services/astrologyService';
+import { BirthDetails } from './types/astrology';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +14,7 @@ app.use(express.json());
 // API endpoints
 app.post('/api/chart', async (req, res) => {
   try {
-    const birthDetails = req.body;
+    const birthDetails = req.body as BirthDetails;
     const chartData = await fetchChartData(birthDetails);
     res.json(chartData);
   } catch (error) {
@@ -24,7 +25,7 @@ app.post('/api/chart', async (req, res) => {
 
 app.post('/api/planets', async (req, res) => {
   try {
-    const birthDetails = req.body;
+    const birthDetails = req.body as BirthDetails;
     const planets = await fetchPlanetaryPositions(birthDetails);
     res.json(planets);
   } catch (error) {
@@ -35,7 +36,7 @@ app.post('/api/planets', async (req, res) => {
 
 app.post('/api/ascendant', async (req, res) => {
   try {
-    const birthDetails = req.body;
+    const birthDetails = req.body as BirthDetails;
     const ascendant = await fetchAscendant(birthDetails);
     res.json(ascendant);
   } catch (error) {
@@ -46,7 +47,7 @@ app.post('/api/ascendant', async (req, res) => {
 
 app.post('/api/dashas', async (req, res) => {
   try {
-    const birthDetails = req.body;
+    const birthDetails = req.body as BirthDetails;
     const dashas = await fetchDashas(birthDetails);
     res.json(dashas);
   } catch (error) {

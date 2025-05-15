@@ -1,10 +1,11 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import BirthDetailsForm from "@/components/BirthDetailsForm";
 import PlanetaryPositions from "@/components/PlanetaryPositions";
 import AstrologyChart from "@/components/AstrologyChart";
 import { BirthDetails, ChartData } from "@/types/astrology";
-import { fetchChartData } from "@/services/astrologyService";
+import { fetchChartData } from "@/services/apiService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Index() {
@@ -16,7 +17,7 @@ export default function Index() {
     setIsLoading(true);
     
     try {
-      // Sử dụng dịch vụ Swiss Ephemeris trực tiếp thay vì gọi API
+      // Use the API service to fetch data
       const result = await fetchChartData(data);
       setChartData(result);
       
@@ -74,7 +75,7 @@ export default function Index() {
       
       <div className="mt-8 text-center text-gray-500 text-sm">
         <p>
-          Powered by Swiss Ephemeris - Direct calculations using the native Swiss Ephemeris library.
+          Powered by Swiss Ephemeris - Calculations via API server
         </p>
       </div>
     </div>

@@ -51,28 +51,39 @@ const getPlanetPosition = (
   let result;
   if (planet === RAHU) {
     result = swisseph.swe_calc_ut(julianDay, planet, flag);
+    if (result.error) {
+      console.error(`Error calculating Rahu position: ${result.error}`);
+      return { longitude: 0, latitude: 0, speed: 0 };
+    }
+    return {
+      longitude: result.longitude || 0,
+      latitude: result.latitude || 0,
+      speed: result.longitudeSpeed || 0 // Sử dụng longitudeSpeed thay vì speed
+    };
   } else if (planet === KETU) {
     // Ketu luôn đối diện với Rahu (cách 180 độ)
-    const rahu = swisseph.swe_calc_ut(julianDay, RAHU, flag);
-    result = {
-      longitude: (rahu.longitude + 180) % 360,
-      latitude: -rahu.latitude,
-      speed: rahu.speed
+    result = swisseph.swe_calc_ut(julianDay, RAHU, flag);
+    if (result.error) {
+      console.error(`Error calculating Ketu position: ${result.error}`);
+      return { longitude: 0, latitude: 0, speed: 0 };
+    }
+    return {
+      longitude: (result.longitude + 180) % 360,
+      latitude: -result.latitude,
+      speed: result.longitudeSpeed // Sử dụng longitudeSpeed thay vì speed
     };
   } else {
     result = swisseph.swe_calc_ut(julianDay, planet, flag);
+    if (result.error) {
+      console.error(`Error calculating planet position: ${result.error}`);
+      return { longitude: 0, latitude: 0, speed: 0 };
+    }
+    return {
+      longitude: result.longitude || 0,
+      latitude: result.latitude || 0,
+      speed: result.longitudeSpeed || 0 // Sử dụng longitudeSpeed thay vì speed
+    };
   }
-  
-  if (result.error) {
-    console.error(`Error calculating planet position: ${result.error}`);
-    return { longitude: 0, latitude: 0, speed: 0 };
-  }
-  
-  return {
-    longitude: result.longitude,
-    latitude: result.latitude,
-    speed: result.speed
-  };
 };
 
 // Chuyển đổi độ sang cung hoàng đạo
@@ -116,7 +127,7 @@ const calculateAscendant = (birthDetails: BirthDetails): { sign: string, degree:
   const julianDay = getJulianDay(birthDetails);
   
   // Flags cho Swiss Ephemeris
-  const flags = swisseph.SEFLG_SIDEREAL | swisseph.SEFLG_SPEED;
+  const flags = swisseph.SEFLG_SIDEREAL;
   
   // Đặt chế độ Sidereal (Veda)
   swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
@@ -130,8 +141,17 @@ const calculateAscendant = (birthDetails: BirthDetails): { sign: string, degree:
   
   const result = swisseph.swe_houses(julianDay, flags, geoPos.latitude, geoPos.longitude, 'E');
   
+  if (result.error) {
+    console.error(`Error calculating houses: ${result.error}`);
+    return {
+      sign: "Unknown",
+      degree: 0,
+      nakshatra: "Unknown"
+    };
+  }
+  
   // Lấy độ của cung mọc
-  const ascendantDegree = result.ascendant;
+  const ascendantDegree = result.ascendant || 0;
   
   return {
     sign: getZodiacSign(ascendantDegree),
@@ -143,8 +163,17 @@ const calculateAscendant = (birthDetails: BirthDetails): { sign: string, degree:
 // Tính toán các hành tinh
 const calculatePlanetaryPositions = (birthDetails: BirthDetails): PlanetaryPosition[] => {
   const julianDay = getJulianDay(birthDetails);
-  const ascendant = calculateAscendant(birthDetails);
-  const ascendantDegree = (getZodiacSign(ascendant.degree).indexOf * 30) + ascendant.degree;
+  const ascendantInfo = calculateAscendant(birthDetails);
+  
+  // Convert sign name to index and calculate absolute degree
+  const signs = [
+    "Aries", "Taurus", "Gemini", "Cancer",
+    "Leo", "Virgo", "Libra", "Scorpio",
+    "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+  ];
+  
+  const signIndex = signs.indexOf(ascendantInfo.sign);
+  const ascendantDegree = (signIndex !== -1 ? signIndex * 30 : 0) + ascendantInfo.degree;
   
   // Danh sách các hành tinh cần tính
   const planets = [
@@ -196,12 +225,21 @@ const calculateHouses = (birthDetails: BirthDetails): { house: number, sign: str
   const houseSystem = 'E'; // Equal House system
   const result = swisseph.swe_houses(julianDay, flags, geoPos.latitude, geoPos.longitude, houseSystem);
   
+  if (result.error) {
+    console.error(`Error calculating houses: ${result.error}`);
+    return Array(12).fill(0).map((_, i) => ({
+      house: i + 1,
+      sign: "Unknown",
+      degree: 0
+    }));
+  }
+  
   // Tạo mảng chứa thông tin các ngôi nhà
   const houses = [];
-  for (let i = 1; i <= 12; i++) {
-    const houseCusp = result.house[i - 1];
+  for (let i = 0; i < 12; i++) {
+    const houseCusp = Array.isArray(result.house) ? result.house[i] || 0 : 0;
     houses.push({
-      house: i,
+      house: i + 1,
       sign: getZodiacSign(houseCusp),
       degree: houseCusp % 30
     });

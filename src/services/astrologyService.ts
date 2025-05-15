@@ -1,4 +1,3 @@
-
 import swisseph from 'swisseph';
 import { BirthDetails, ChartData, PlanetaryPosition } from "@/types/astrology";
 
@@ -443,4 +442,3 @@ export const fetchDashas = async (birthDetails: BirthDetails) => {
     throw error;
   }
 };
-

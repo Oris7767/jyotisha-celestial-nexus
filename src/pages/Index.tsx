@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import BirthDetailsForm from "@/components/BirthDetailsForm";
@@ -17,63 +16,14 @@ export default function Index() {
     setIsLoading(true);
     
     try {
-      // Since we don't have a real backend yet, we'll use a timeout to simulate API call
-      // In a real application, you would call your API here
-      setTimeout(() => {
-        // This is placeholder data. In production, you would call your API
-        const mockChartData: ChartData = {
-          ascendant: {
-            sign: "Aries",
-            degree: 15.5,
-            nakshatra: "Bharani"
-          },
-          planets: [
-            { planet: "Sun", longitude: 45.5, house: 2, sign: "Taurus", retrograde: false },
-            { planet: "Moon", longitude: 78.3, house: 3, sign: "Gemini", nakshatra: "Ardra", retrograde: false },
-            { planet: "Mercury", longitude: 50.2, house: 2, sign: "Taurus", retrograde: false },
-            { planet: "Venus", longitude: 120.7, house: 5, sign: "Leo", retrograde: false },
-            { planet: "Mars", longitude: 210.3, house: 8, sign: "Scorpio", retrograde: false },
-            { planet: "Jupiter", longitude: 300.1, house: 11, sign: "Aquarius", retrograde: true },
-            { planet: "Saturn", longitude: 330.5, house: 12, sign: "Pisces", retrograde: true },
-            { planet: "Rahu", longitude: 160.8, house: 6, sign: "Virgo", retrograde: false },
-            { planet: "Ketu", longitude: 340.8, house: 12, sign: "Pisces", retrograde: false }
-          ],
-          houses: [
-            { house: 1, sign: "Aries", degree: 0 },
-            { house: 2, sign: "Taurus", degree: 30 },
-            { house: 3, sign: "Gemini", degree: 60 },
-            { house: 4, sign: "Cancer", degree: 90 },
-            { house: 5, sign: "Leo", degree: 120 },
-            { house: 6, sign: "Virgo", degree: 150 },
-            { house: 7, sign: "Libra", degree: 180 },
-            { house: 8, sign: "Scorpio", degree: 210 },
-            { house: 9, sign: "Sagittarius", degree: 240 },
-            { house: 10, sign: "Capricorn", degree: 270 },
-            { house: 11, sign: "Aquarius", degree: 300 },
-            { house: 12, sign: "Pisces", degree: 330 }
-          ],
-          dashas: {
-            current: "Venus",
-            endDate: "2030-01-15",
-            subDashas: [
-              { current: "Sun", endDate: "2023-07-15" }
-            ]
-          }
-        };
-        
-        setChartData(mockChartData);
-        setIsLoading(false);
-        
-        toast({
-          title: "Chart Generated",
-          description: "Vedic astrological chart has been calculated successfully.",
-        });
-      }, 2000);
+      // Sử dụng dịch vụ Swiss Ephemeris trực tiếp thay vì gọi API
+      const result = await fetchChartData(data);
+      setChartData(result);
       
-      // In a real application with your API:
-      // const data = await fetchChartData(birthDetails);
-      // setChartData(data);
-      
+      toast({
+        title: "Chart Generated",
+        description: "Vedic astrological chart has been calculated successfully.",
+      });
     } catch (error) {
       console.error("Failed to generate chart:", error);
       toast({
@@ -81,6 +31,7 @@ export default function Index() {
         description: "Failed to generate the astrological chart. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -123,8 +74,7 @@ export default function Index() {
       
       <div className="mt-8 text-center text-gray-500 text-sm">
         <p>
-          This is a client-side frontend for Vedic astrology calculations. 
-          Connect it to your Swiss Ephemeris Node.js API for real calculations.
+          Powered by Swiss Ephemeris - Direct calculations using the native Swiss Ephemeris library.
         </p>
       </div>
     </div>

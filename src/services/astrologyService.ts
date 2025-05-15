@@ -1,10 +1,10 @@
 
 import swisseph from 'swisseph';
 import { BirthDetails, ChartData, PlanetaryPosition } from "@/types/astrology";
-import path from 'path';
 
-// Cấu hình đường dẫn đến file ephemeris
-const EPHE_PATH = process.env.EPHE_PATH || path.join(process.cwd(), 'ephe');
+// Cấu hình Swiss Ephemeris - chỉ định đường dẫn tương đối
+// Trong môi trường trình duyệt, đường dẫn tương đối sẽ được sử dụng
+const EPHE_PATH = './ephe';
 swisseph.swe_set_ephe_path(EPHE_PATH);
 
 // Các hằng số cho các hành tinh
@@ -39,6 +39,21 @@ const getJulianDay = (birthDetails: BirthDetails): number => {
   return swisseph.swe_julday(year, month, day, ut, swisseph.SE_GREG_CAL);
 };
 
+// Xử lý lỗi trong API và trả về kết quả an toàn
+const safeGetPlanetPosition = (julianDay: number, planet: number, flag: number) => {
+  try {
+    return swisseph.swe_calc_ut(julianDay, planet, flag);
+  } catch (error) {
+    console.error(`Error calculating planet ${planet} position:`, error);
+    return { 
+      longitude: 0, 
+      latitude: 0, 
+      longitudeSpeed: 0,
+      error: `Failed to calculate position for planet ${planet}`
+    };
+  }
+};
+
 // Lấy vị trí hành tinh
 const getPlanetPosition = (
   julianDay: number, 
@@ -46,43 +61,41 @@ const getPlanetPosition = (
   flag: number = swisseph.SEFLG_SIDEREAL | swisseph.SEFLG_SPEED
 ): { longitude: number, latitude: number, speed: number } => {
   // Đặt Ayanamsha cho tính toán sidereal
-  swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
+  try {
+    swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
+  } catch (error) {
+    console.error("Error setting sidereal mode:", error);
+  }
   
   let result;
-  if (planet === RAHU) {
-    result = swisseph.swe_calc_ut(julianDay, planet, flag);
-    if (result.error) {
-      console.error(`Error calculating Rahu position: ${result.error}`);
-      return { longitude: 0, latitude: 0, speed: 0 };
+  
+  try {
+    if (planet === RAHU) {
+      result = safeGetPlanetPosition(julianDay, planet, flag);
+      return {
+        longitude: result.longitude || 0,
+        latitude: result.latitude || 0,
+        speed: result.longitudeSpeed || 0
+      };
+    } else if (planet === KETU) {
+      // Ketu luôn đối diện với Rahu (cách 180 độ)
+      result = safeGetPlanetPosition(julianDay, RAHU, flag);
+      return {
+        longitude: ((result.longitude || 0) + 180) % 360,
+        latitude: -(result.latitude || 0),
+        speed: result.longitudeSpeed || 0
+      };
+    } else {
+      result = safeGetPlanetPosition(julianDay, planet, flag);
+      return {
+        longitude: result.longitude || 0,
+        latitude: result.latitude || 0,
+        speed: result.longitudeSpeed || 0
+      };
     }
-    return {
-      longitude: result.longitude || 0,
-      latitude: result.latitude || 0,
-      speed: result.longitudeSpeed || 0 // Sử dụng longitudeSpeed thay vì speed
-    };
-  } else if (planet === KETU) {
-    // Ketu luôn đối diện với Rahu (cách 180 độ)
-    result = swisseph.swe_calc_ut(julianDay, RAHU, flag);
-    if (result.error) {
-      console.error(`Error calculating Ketu position: ${result.error}`);
-      return { longitude: 0, latitude: 0, speed: 0 };
-    }
-    return {
-      longitude: (result.longitude + 180) % 360,
-      latitude: -result.latitude,
-      speed: result.longitudeSpeed // Sử dụng longitudeSpeed thay vì speed
-    };
-  } else {
-    result = swisseph.swe_calc_ut(julianDay, planet, flag);
-    if (result.error) {
-      console.error(`Error calculating planet position: ${result.error}`);
-      return { longitude: 0, latitude: 0, speed: 0 };
-    }
-    return {
-      longitude: result.longitude || 0,
-      latitude: result.latitude || 0,
-      speed: result.longitudeSpeed || 0 // Sử dụng longitudeSpeed thay vì speed
-    };
+  } catch (error) {
+    console.error(`Error in getPlanetPosition for planet ${planet}:`, error);
+    return { longitude: 0, latitude: 0, speed: 0 };
   }
 };
 
@@ -93,7 +106,7 @@ const getZodiacSign = (longitude: number): string => {
     "Leo", "Virgo", "Libra", "Scorpio",
     "Sagittarius", "Capricorn", "Aquarius", "Pisces"
   ];
-  const signIndex = Math.floor(longitude / 30);
+  const signIndex = Math.floor(longitude / 30) % 12;
   return signs[signIndex];
 };
 
@@ -107,7 +120,7 @@ const getNakshatra = (longitude: number): string => {
     "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha",
     "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
   ];
-  const nakshatraIndex = Math.floor(longitude * 27 / 360);
+  const nakshatraIndex = Math.floor(longitude * 27 / 360) % 27;
   return nakshatras[nakshatraIndex];
 };
 
@@ -122,204 +135,247 @@ const getHousePosition = (ascendantDegree: number, planetLongitude: number): num
   return Math.floor(diff / 30) + 1;
 };
 
+// Tính toán cung mọc một cách an toàn
+const safeCalculateHouses = (julianDay: number, flags: number, latitude: number, longitude: number, system: string) => {
+  try {
+    return swisseph.swe_houses(julianDay, flags, latitude, longitude, system);
+  } catch (error) {
+    console.error("Error calculating houses:", error);
+    return {
+      house: Array(12).fill(0),
+      ascendant: 0,
+      mc: 0,
+      armc: 0,
+      vertex: 0,
+      equatorialAscendant: 0,
+      kochCoAscendant: 0,
+      munkaseyCoAscendant: 0,
+      munkaseyPolarAscendant: 0
+    };
+  }
+};
+
 // Lấy vị trí cung mọc (Ascendant)
 const calculateAscendant = (birthDetails: BirthDetails): { sign: string, degree: number, nakshatra: string } => {
-  const julianDay = getJulianDay(birthDetails);
-  
-  // Flags cho Swiss Ephemeris
-  const flags = swisseph.SEFLG_SIDEREAL;
-  
-  // Đặt chế độ Sidereal (Veda)
-  swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
-  
-  // Tính vị trí cung mọc (Ascendant)
-  const geoPos = {
-    longitude: birthDetails.longitude,
-    latitude: birthDetails.latitude,
-    altitude: 0 // Mặc định là 0 mét trên mực nước biển
-  };
-  
-  const result = swisseph.swe_houses(julianDay, flags, geoPos.latitude, geoPos.longitude, 'E');
-  
-  if (result.error) {
-    console.error(`Error calculating houses: ${result.error}`);
+  try {
+    const julianDay = getJulianDay(birthDetails);
+    
+    // Flags cho Swiss Ephemeris
+    const flags = swisseph.SEFLG_SIDEREAL;
+    
+    // Đặt chế độ Sidereal (Veda)
+    swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
+    
+    // Tính vị trí cung mọc (Ascendant)
+    const geoPos = {
+      longitude: birthDetails.longitude,
+      latitude: birthDetails.latitude,
+      altitude: 0 // Mặc định là 0 mét trên mực nước biển
+    };
+    
+    const result = safeCalculateHouses(julianDay, flags, geoPos.latitude, geoPos.longitude, "E");
+    
+    // Lấy độ của cung mọc
+    const ascendantDegree = result.ascendant || 0;
+    
+    return {
+      sign: getZodiacSign(ascendantDegree),
+      degree: ascendantDegree % 30, // Độ trong cung
+      nakshatra: getNakshatra(ascendantDegree)
+    };
+  } catch (error) {
+    console.error("Error in calculateAscendant:", error);
     return {
       sign: "Unknown",
       degree: 0,
       nakshatra: "Unknown"
     };
   }
-  
-  // Lấy độ của cung mọc
-  const ascendantDegree = result.ascendant || 0;
-  
-  return {
-    sign: getZodiacSign(ascendantDegree),
-    degree: ascendantDegree % 30, // Độ trong cung
-    nakshatra: getNakshatra(ascendantDegree)
-  };
 };
 
 // Tính toán các hành tinh
 const calculatePlanetaryPositions = (birthDetails: BirthDetails): PlanetaryPosition[] => {
-  const julianDay = getJulianDay(birthDetails);
-  const ascendantInfo = calculateAscendant(birthDetails);
-  
-  // Convert sign name to index and calculate absolute degree
-  const signs = [
-    "Aries", "Taurus", "Gemini", "Cancer",
-    "Leo", "Virgo", "Libra", "Scorpio",
-    "Sagittarius", "Capricorn", "Aquarius", "Pisces"
-  ];
-  
-  const signIndex = signs.indexOf(ascendantInfo.sign);
-  const ascendantDegree = (signIndex !== -1 ? signIndex * 30 : 0) + ascendantInfo.degree;
-  
-  // Danh sách các hành tinh cần tính
-  const planets = [
-    { id: SUN, name: "Sun" },
-    { id: MOON, name: "Moon" },
-    { id: MERCURY, name: "Mercury" },
-    { id: VENUS, name: "Venus" },
-    { id: MARS, name: "Mars" },
-    { id: JUPITER, name: "Jupiter" },
-    { id: SATURN, name: "Saturn" },
-    { id: RAHU, name: "Rahu" },
-    { id: KETU, name: "Ketu" }
-  ];
-  
-  // Tính vị trí của từng hành tinh
-  return planets.map(planet => {
-    const position = getPlanetPosition(julianDay, planet.id);
-    const house = getHousePosition(ascendantDegree, position.longitude);
+  try {
+    const julianDay = getJulianDay(birthDetails);
+    const ascendantInfo = calculateAscendant(birthDetails);
     
-    return {
-      planet: planet.name,
-      longitude: position.longitude,
-      latitude: position.latitude,
-      house: house,
-      sign: getZodiacSign(position.longitude),
-      nakshatra: getNakshatra(position.longitude),
-      retrograde: position.speed < 0
-    };
-  });
+    // Convert sign name to index and calculate absolute degree
+    const signs = [
+      "Aries", "Taurus", "Gemini", "Cancer",
+      "Leo", "Virgo", "Libra", "Scorpio",
+      "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+    ];
+    
+    const signIndex = signs.indexOf(ascendantInfo.sign);
+    const ascendantDegree = (signIndex !== -1 ? signIndex * 30 : 0) + ascendantInfo.degree;
+    
+    // Danh sách các hành tinh cần tính
+    const planets = [
+      { id: SUN, name: "Sun" },
+      { id: MOON, name: "Moon" },
+      { id: MERCURY, name: "Mercury" },
+      { id: VENUS, name: "Venus" },
+      { id: MARS, name: "Mars" },
+      { id: JUPITER, name: "Jupiter" },
+      { id: SATURN, name: "Saturn" },
+      { id: RAHU, name: "Rahu" },
+      { id: KETU, name: "Ketu" }
+    ];
+    
+    // Tính vị trí của từng hành tinh
+    return planets.map(planet => {
+      const position = getPlanetPosition(julianDay, planet.id);
+      const house = getHousePosition(ascendantDegree, position.longitude);
+      
+      return {
+        planet: planet.name,
+        longitude: position.longitude,
+        latitude: position.latitude,
+        house: house,
+        sign: getZodiacSign(position.longitude),
+        nakshatra: getNakshatra(position.longitude),
+        retrograde: position.speed < 0
+      };
+    });
+  } catch (error) {
+    console.error("Error in calculatePlanetaryPositions:", error);
+    return [];
+  }
 };
 
 // Tính toán các ngôi nhà
 const calculateHouses = (birthDetails: BirthDetails): { house: number, sign: string, degree: number }[] => {
-  const julianDay = getJulianDay(birthDetails);
-  
-  // Flags cho Swiss Ephemeris
-  const flags = swisseph.SEFLG_SIDEREAL;
-  
-  // Đặt chế độ Sidereal (Veda)
-  swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
-  
-  // Tính vị trí các ngôi nhà
-  const geoPos = {
-    longitude: birthDetails.longitude,
-    latitude: birthDetails.latitude,
-    altitude: 0
-  };
-  
-  const houseSystem = 'E'; // Equal House system
-  const result = swisseph.swe_houses(julianDay, flags, geoPos.latitude, geoPos.longitude, houseSystem);
-  
-  if (result.error) {
-    console.error(`Error calculating houses: ${result.error}`);
+  try {
+    const julianDay = getJulianDay(birthDetails);
+    
+    // Flags cho Swiss Ephemeris
+    const flags = swisseph.SEFLG_SIDEREAL;
+    
+    // Đặt chế độ Sidereal (Veda)
+    swisseph.swe_set_sid_mode(AYANAMSA, 0, 0);
+    
+    // Tính vị trí các ngôi nhà
+    const geoPos = {
+      longitude: birthDetails.longitude,
+      latitude: birthDetails.latitude,
+      altitude: 0
+    };
+    
+    const houseSystem = "E"; // Equal House system
+    const result = safeCalculateHouses(julianDay, flags, geoPos.latitude, geoPos.longitude, houseSystem);
+    
+    // Tạo mảng chứa thông tin các ngôi nhà
+    const houses = [];
+    for (let i = 0; i < 12; i++) {
+      const houseCusp = Array.isArray(result.house) ? result.house[i] || 0 : 0;
+      houses.push({
+        house: i + 1,
+        sign: getZodiacSign(houseCusp),
+        degree: houseCusp % 30
+      });
+    }
+    
+    return houses;
+  } catch (error) {
+    console.error("Error in calculateHouses:", error);
     return Array(12).fill(0).map((_, i) => ({
       house: i + 1,
       sign: "Unknown",
       degree: 0
     }));
   }
-  
-  // Tạo mảng chứa thông tin các ngôi nhà
-  const houses = [];
-  for (let i = 0; i < 12; i++) {
-    const houseCusp = Array.isArray(result.house) ? result.house[i] || 0 : 0;
-    houses.push({
-      house: i + 1,
-      sign: getZodiacSign(houseCusp),
-      degree: houseCusp % 30
-    });
-  }
-  
-  return houses;
 };
 
 // Tính toán Vimshottari Dasha (hệ thống chu kỳ 120 năm của Veda)
 const calculateDashas = (birthDetails: BirthDetails): { current: string, endDate: string, subDashas?: { current: string, endDate: string }[] } => {
-  const julianDay = getJulianDay(birthDetails);
-  
-  // Tính vị trí Mặt Trăng để xác định Dasha
-  const moonPosition = getPlanetPosition(julianDay, MOON);
-  const moonLongitude = moonPosition.longitude;
-  
-  // Tính Nakshatra của Mặt Trăng
-  const nakshatraIndex = Math.floor(moonLongitude * 27 / 360);
-  
-  // Danh sách các hành tinh theo thứ tự Dasha
-  const dashaPlanets = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
-  
-  // Thời gian của mỗi Dasha theo năm
-  const dashaDurations = [7, 20, 6, 10, 7, 18, 16, 19, 17];
-  
-  // Tính toán vị trí hiện tại trong chu kỳ Dasha
-  // Đây là phần giả lập đơn giản, trong thực tế cần tính toán phức tạp hơn
-  const birthDate = new Date(birthDetails.date);
-  const today = new Date();
-  const yearsSinceBirth = (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-  
-  // Tính toán chu kỳ Dasha hiện tại
-  let currentDashaIndex = -1;
-  let currentDasha = "";
-  let dashaEndDate = "";
-  let accumulatedYears = 0;
-  
-  for (let i = 0; i < dashaPlanets.length; i++) {
-    const startingIndex = (nakshatraIndex + i) % 9;
-    accumulatedYears += dashaDurations[startingIndex];
+  try {
+    const julianDay = getJulianDay(birthDetails);
     
-    if (yearsSinceBirth < accumulatedYears) {
-      currentDashaIndex = startingIndex;
-      currentDasha = dashaPlanets[startingIndex];
+    // Tính vị trí Mặt Trăng để xác định Dasha
+    const moonPosition = getPlanetPosition(julianDay, MOON);
+    const moonLongitude = moonPosition.longitude;
+    
+    // Tính Nakshatra của Mặt Trăng
+    const nakshatraIndex = Math.floor(moonLongitude * 27 / 360) % 27;
+    
+    // Danh sách các hành tinh theo thứ tự Dasha
+    const dashaPlanets = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+    
+    // Thời gian của mỗi Dasha theo năm
+    const dashaDurations = [7, 20, 6, 10, 7, 18, 16, 19, 17];
+    
+    // Tính toán vị trí hiện tại trong chu kỳ Dasha
+    // Đây là phần giả lập đơn giản, trong thực tế cần tính toán phức tạp hơn
+    const birthDate = new Date(birthDetails.date);
+    const today = new Date();
+    const yearsSinceBirth = (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    
+    // Tính toán chu kỳ Dasha hiện tại
+    let currentDashaIndex = -1;
+    let currentDasha = "";
+    let dashaEndDate = "";
+    let accumulatedYears = 0;
+    
+    for (let i = 0; i < dashaPlanets.length; i++) {
+      const startingIndex = (nakshatraIndex + i) % 9;
+      accumulatedYears += dashaDurations[startingIndex];
       
-      // Tính ngày kết thúc
-      const endYear = birthDate.getFullYear() + Math.floor(accumulatedYears);
-      const endMonth = birthDate.getMonth();
-      const endDay = birthDate.getDate();
-      dashaEndDate = `${endYear}-${(endMonth + 1).toString().padStart(2, '0')}-${endDay.toString().padStart(2, '0')}`;
-      break;
+      if (yearsSinceBirth < accumulatedYears) {
+        currentDashaIndex = startingIndex;
+        currentDasha = dashaPlanets[startingIndex];
+        
+        // Tính ngày kết thúc
+        const endYear = birthDate.getFullYear() + Math.floor(accumulatedYears);
+        const endMonth = birthDate.getMonth();
+        const endDay = birthDate.getDate();
+        dashaEndDate = `${endYear}-${(endMonth + 1).toString().padStart(2, '0')}-${endDay.toString().padStart(2, '0')}`;
+        break;
+      }
     }
-  }
-  
-  // Tính Sub-Dasha (đơn giản hoá)
-  const subDashas = dashaPlanets.map((planet, index) => {
-    const subDuration = dashaDurations[index] * dashaDurations[currentDashaIndex] / 120;
-    const subEndYear = birthDate.getFullYear() + Math.floor(yearsSinceBirth + subDuration);
-    const subEndMonth = birthDate.getMonth();
-    const subEndDay = birthDate.getDate();
+    
+    // Tính Sub-Dasha (đơn giản hoá)
+    const subDashas = dashaPlanets.map((planet, index) => {
+      const subDuration = dashaDurations[index] * dashaDurations[currentDashaIndex !== -1 ? currentDashaIndex : 0] / 120;
+      const subEndYear = birthDate.getFullYear() + Math.floor(yearsSinceBirth + subDuration);
+      const subEndMonth = birthDate.getMonth();
+      const subEndDay = birthDate.getDate();
+      
+      return {
+        current: planet,
+        endDate: `${subEndYear}-${(subEndMonth + 1).toString().padStart(2, '0')}-${subEndDay.toString().padStart(2, '0')}`
+      };
+    });
     
     return {
-      current: planet,
-      endDate: `${subEndYear}-${(subEndMonth + 1).toString().padStart(2, '0')}-${subEndDay.toString().padStart(2, '0')}`
+      current: currentDasha || "Unknown",
+      endDate: dashaEndDate || "Unknown",
+      subDashas: subDashas.slice(0, 3) // Chỉ lấy 3 sub-dasha đầu tiên
     };
-  });
-  
-  return {
-    current: currentDasha,
-    endDate: dashaEndDate,
-    subDashas: subDashas.slice(0, 3) // Chỉ lấy 3 sub-dasha đầu tiên
-  };
+  } catch (error) {
+    console.error("Error in calculateDashas:", error);
+    return {
+      current: "Unknown",
+      endDate: "Unknown",
+      subDashas: []
+    };
+  }
 };
 
+// Tạo API endpoint để lấy dữ liệu biểu đồ
 export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartData> => {
+  console.log("Fetching chart data with details:", birthDetails);
   try {
     const ascendant = calculateAscendant(birthDetails);
+    console.log("Calculated ascendant:", ascendant);
+    
     const planets = calculatePlanetaryPositions(birthDetails);
+    console.log("Calculated planets:", planets);
+    
     const houses = calculateHouses(birthDetails);
+    console.log("Calculated houses:", houses);
+    
     const dashas = calculateDashas(birthDetails);
+    console.log("Calculated dashas:", dashas);
     
     return {
       ascendant,
@@ -333,6 +389,7 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
   }
 };
 
+// API endpoints riêng lẻ cho từng thành phần dữ liệu
 export const fetchPlanetaryPositions = async (birthDetails: BirthDetails) => {
   try {
     return calculatePlanetaryPositions(birthDetails);

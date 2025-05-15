@@ -135,22 +135,28 @@ const getHousePosition = (ascendantDegree: number, planetLongitude: number): num
   return Math.floor(diff / 30) + 1;
 };
 
+// Type definition for house calculation result
+type HouseCalcResult = {
+  house?: any[];
+  ascendant?: number;
+  mc?: number;
+  armc?: number;
+  vertex?: number;
+  equatorialAscendant?: number;
+  kochCoAscendant?: number;
+  munkaseyCoAscendant?: number;
+  munkaseyPolarAscendant?: number;
+  error?: string;
+};
+
 // Tính toán cung mọc một cách an toàn
-const safeCalculateHouses = (julianDay: number, flags: number, latitude: number, longitude: number, system: string) => {
+const safeCalculateHouses = (julianDay: number, flags: number, latitude: number, longitude: number, system: string): HouseCalcResult => {
   try {
     return swisseph.swe_houses(julianDay, flags, latitude, longitude, system);
   } catch (error) {
     console.error("Error calculating houses:", error);
     return {
-      house: Array(12).fill(0),
-      ascendant: 0,
-      mc: 0,
-      armc: 0,
-      vertex: 0,
-      equatorialAscendant: 0,
-      kochCoAscendant: 0,
-      munkaseyCoAscendant: 0,
-      munkaseyPolarAscendant: 0
+      error: "Error calculating houses",
     };
   }
 };
@@ -174,6 +180,14 @@ const calculateAscendant = (birthDetails: BirthDetails): { sign: string, degree:
     };
     
     const result = safeCalculateHouses(julianDay, flags, geoPos.latitude, geoPos.longitude, "E");
+    
+    if (result.error) {
+      return {
+        sign: "Unknown",
+        degree: 0,
+        nakshatra: "Unknown"
+      };
+    }
     
     // Lấy độ của cung mọc
     const ascendantDegree = result.ascendant || 0;
@@ -264,10 +278,23 @@ const calculateHouses = (birthDetails: BirthDetails): { house: number, sign: str
     const houseSystem = "E"; // Equal House system
     const result = safeCalculateHouses(julianDay, flags, geoPos.latitude, geoPos.longitude, houseSystem);
     
+    // Check if there was an error calculating houses
+    if (result.error) {
+      return Array(12).fill(0).map((_, i) => ({
+        house: i + 1,
+        sign: "Unknown",
+        degree: 0
+      }));
+    }
+    
     // Tạo mảng chứa thông tin các ngôi nhà
     const houses = [];
+    
+    // Make sure house array exists before accessing it
+    const houseArray = result.house || [];
+    
     for (let i = 0; i < 12; i++) {
-      const houseCusp = Array.isArray(result.house) ? result.house[i] || 0 : 0;
+      const houseCusp = i < houseArray.length ? houseArray[i] || 0 : 0;
       houses.push({
         house: i + 1,
         sign: getZodiacSign(houseCusp),

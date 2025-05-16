@@ -38,7 +38,8 @@ const getJulianDay = (birthDetails: BirthDetails): number => {
  */
 const calculateAyanamsa = (julianDay: number): number => {
   // Use default ayanamsa (Lahiri in Vedic)
-  return swisseph.swe_get_ayanamsa(julianDay, DEFAULT_AYANAMSA);
+  // Fixed: Passing the correct number of arguments to swe_get_ayanamsa
+  return swisseph.swe_get_ayanamsa(julianDay);
 };
 
 /**
@@ -120,18 +121,34 @@ const findHouse = (longitude: number, housePositions: number[]): number => {
   return 1; // Default to first house if something goes wrong
 };
 
+// Define interface for house calculation result
+interface HouseResult {
+  house?: number[];
+  ascendant?: number;
+  mc?: number;
+  armc?: number;
+  vertex?: number;
+  equatorialAscendant?: number;
+  kochCoAscendant?: number;
+  munkaseyCoAscendant?: number;
+  munkaseyPolarAscendant?: number;
+  error?: string;
+}
+
 /**
  * Calculate house cusps
  */
 const safeCalculateHouses = (julianDay: number, latitude: number, longitude: number): number[] => {
   try {
+    // Fixed: passing DEFAULT_HOUSE_SYSTEM as string
     const houses = swisseph.swe_houses(
       julianDay, 
       latitude, 
       longitude, 
-      DEFAULT_HOUSE_SYSTEM
-    );
+      DEFAULT_HOUSE_SYSTEM as string
+    ) as HouseResult;
     
+    // Fixed: Safely check if houses.house exists before accessing it
     if (!houses || !houses.house) {
       throw new Error("Failed to calculate houses");
     }

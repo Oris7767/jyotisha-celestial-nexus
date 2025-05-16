@@ -148,7 +148,7 @@ type HouseCalcResult = {
   error?: string;
 };
 
-// Tính toán cung mọc một cách an toàn
+// Tính toán cung mọc một cách an toàn - Sửa tham số system thành string
 const safeCalculateHouses = (julianDay: number, flags: number, latitude: number, longitude: number, system: string): HouseCalcResult => {
   try {
     return swisseph.swe_houses(julianDay, flags, latitude, longitude, system);
@@ -178,6 +178,7 @@ const calculateAscendant = (birthDetails: BirthDetails): { sign: string, degree:
       altitude: 0 // Mặc định là 0 mét trên mực nước biển
     };
     
+    // Đảm bảo sử dụng "E" dạng string cho system
     const result = safeCalculateHouses(julianDay, flags, geoPos.latitude, geoPos.longitude, "E");
     
     if (result.error) {
@@ -274,6 +275,7 @@ const calculateHouses = (birthDetails: BirthDetails): { house: number, sign: str
       altitude: 0
     };
     
+    // Đảm bảo sử dụng "E" dạng string cho system
     const houseSystem = "E"; // Equal House system
     const result = safeCalculateHouses(julianDay, flags, geoPos.latitude, geoPos.longitude, houseSystem);
     

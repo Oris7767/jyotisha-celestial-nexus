@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
 
-## Project info
+# Vedic Astrology API Server
 
-**URL**: https://lovable.dev/projects/09566bed-2530-4df6-82c6-75b25b07878f
+API server cung cấp các tính toán chiêm tinh Vedic sử dụng Swiss Ephemeris.
 
-## How can I edit this code?
+## Cài đặt
 
-There are several ways of editing your application.
+```bash
+# Clone repository
+git clone <url>
 
-**Use Lovable**
+# Cài đặt dependencies
+npm install
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/09566bed-2530-4df6-82c6-75b25b07878f) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Khởi động server
+npm start
 ```
 
-**Edit a file directly in GitHub**
+## API Endpoints
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Tạo biểu đồ chiêm tinh đầy đủ
+`POST /api/chart`
 
-**Use GitHub Codespaces**
+Yêu cầu:
+```json
+{
+  "date": "1990-01-01",
+  "time": "12:00",
+  "latitude": 21.0278,
+  "longitude": 105.8342,
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Lấy vị trí các hành tinh
+`POST /api/planets`
 
-## What technologies are used for this project?
+Yêu cầu:
+```json
+{
+  "date": "1990-01-01",
+  "time": "12:00",
+  "latitude": 21.0278,
+  "longitude": 105.8342,
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
 
-This project is built with:
+### Lấy thông tin Ascendant (Lagna)
+`POST /api/ascendant`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Yêu cầu:
+```json
+{
+  "date": "1990-01-01",
+  "time": "12:00",
+  "latitude": 21.0278,
+  "longitude": 105.8342,
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
 
-## How can I deploy this project?
+### Lấy thông tin Dasha
+`POST /api/dashas`
 
-Simply open [Lovable](https://lovable.dev/projects/09566bed-2530-4df6-82c6-75b25b07878f) and click on Share -> Publish.
+Yêu cầu:
+```json
+{
+  "date": "1990-01-01",
+  "time": "12:00",
+  "latitude": 21.0278,
+  "longitude": 105.8342,
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
 
-## Can I connect a custom domain to my Lovable project?
+## Cấu hình
 
-Yes, you can!
+Các cấu hình được lưu trong file `.env`:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- `PORT`: Cổng server (mặc định: 3000)
+- `EPHE_PATH`: Đường dẫn đến file ephemeris (mặc định: './ephe')
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Yêu cầu
+- Node.js
+- Swiss Ephemeris files (đã được bao gồm trong thư mục ephe/)

@@ -9,32 +9,39 @@ export interface PlanetaryPosition {
   retrograde: boolean;
 }
 
+export interface HousePosition {
+  house: number;
+  sign: string;
+  degree: number;
+}
+
+export interface Ascendant {
+  sign: string;
+  degree: number;
+  nakshatra?: string;
+}
+
+export interface DashaDetail {
+  planet: string;
+  endDate: Date;
+}
+
+export interface Dasha {
+  current: string;
+  sequence: DashaDetail[];
+}
+
 export interface ChartData {
-  ascendant: {
-    sign: string;
-    degree: number;
-    nakshatra?: string;
-  };
+  ascendant: Ascendant;
   planets: PlanetaryPosition[];
-  houses: {
-    house: number;
-    sign: string;
-    degree: number;
-  }[];
-  dashas?: {
-    current: string;
-    endDate: string;
-    subDashas?: {
-      current: string;
-      endDate: string;
-    }[];
-  };
+  houses: HousePosition[];
+  dashas?: Dasha;
 }
 
 export interface BirthDetails {
-  date: string;
-  time: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
+  date: string;     // Format: YYYY-MM-DD
+  time: string;     // Format: HH:MM (24-hour)
+  latitude: number; // Decimal degrees (positive for North, negative for South)
+  longitude: number; // Decimal degrees (positive for East, negative for West)
+  timezone: string; // Format: UTC+/-HH:MM or time zone name
 }

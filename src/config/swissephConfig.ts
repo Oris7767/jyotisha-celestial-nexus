@@ -2,15 +2,46 @@
 import swisseph from 'swisseph';
 import path from 'path';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 // Load environment variables
 dotenv.config();
 
-// Ephemeris file path
-const EPHE_PATH = process.env.EPHE_PATH || './ephe';
+// Ephemeris file path with fallbacks
+const determineEphePath = () => {
+  const envPath = process.env.EPHE_PATH;
+  
+  if (envPath) {
+    console.log(`Using environment-specified ephemeris path: ${envPath}`);
+    return envPath;
+  }
+  
+  const defaultPath = path.resolve(__dirname, '../../ephe');
+  console.log(`Using default ephemeris path: ${defaultPath}`);
+
+  // Check if directory exists
+  if (!fs.existsSync(defaultPath)) {
+    console.warn(`Warning: Ephemeris directory does not exist at ${defaultPath}`);
+    try {
+      fs.mkdirSync(defaultPath, { recursive: true });
+      console.log(`Created ephemeris directory at ${defaultPath}`);
+    } catch (err) {
+      console.error(`Error creating ephemeris directory: ${err}`);
+    }
+  }
+
+  return defaultPath;
+};
+
+const EPHE_PATH = determineEphePath();
 
 // Initialize Swiss Ephemeris with the ephemeris path
-swisseph.swe_set_ephe_path(EPHE_PATH);
+try {
+  swisseph.swe_set_ephe_path(EPHE_PATH);
+  console.log('Swiss Ephemeris initialized successfully');
+} catch (error) {
+  console.error('Error initializing Swiss Ephemeris:', error);
+}
 
 // Zodiac constants
 export const ZODIAC_SIGNS = [

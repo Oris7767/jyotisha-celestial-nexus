@@ -1,0 +1,18 @@
+
+services:
+  - type: web
+    name: vedic-astrology-api
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: EPHE_PATH
+        value: ./ephe
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: ephemeris-data
+      mountPath: /opt/render/project/src/ephe
+      sizeGB: 1

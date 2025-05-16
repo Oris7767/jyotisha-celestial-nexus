@@ -9,7 +9,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins for testing, update for production
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // API endpoints
@@ -57,18 +61,44 @@ app.post('/api/dashas', async (req, res) => {
   }
 });
 
-// Serve static ephemeris files - ensure absolute path
-app.use('/ephe', express.static(path.resolve(__dirname, '../ephe')));
+// Determine ephemeris path with priority for environment variable
+const ephePath = process.env.EPHE_PATH || path.resolve(__dirname, '../ephe');
+console.log(`Using ephemeris path: ${ephePath}`);
+
+// Serve static ephemeris files
+app.use('/ephe', express.static(ephePath));
 
 // Health check route
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Vedic Astrology API is running' });
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Vedic Astrology API is running',
+    environment: process.env.NODE_ENV,
+    ephemerisPath: ephePath
+  });
+});
+
+// Root route for service verification
+app.get('/', (req, res) => {
+  res.status(200).json({
+    service: 'Vedic Astrology API',
+    version: '1.0.0',
+    endpoints: [
+      { route: '/api/chart', method: 'POST', description: 'Generate full astrological chart' },
+      { route: '/api/planets', method: 'POST', description: 'Get planetary positions' },
+      { route: '/api/ascendant', method: 'POST', description: 'Get ascendant information' },
+      { route: '/api/dashas', method: 'POST', description: 'Get dasha periods' },
+      { route: '/health', method: 'GET', description: 'Health check endpoint' }
+    ],
+    documentation: 'For API usage instructions, see README.md'
+  });
 });
 
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Ephemeris path: ${process.env.EPHE_PATH || path.resolve(__dirname, '../ephe')}`);
+  console.log(`Ephemeris path: ${ephePath}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 export default app;

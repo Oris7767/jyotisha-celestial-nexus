@@ -1,8 +1,16 @@
+import app from './server.js';
+import dotenv from 'dotenv';
 
-import app from './server';
+// Load environment variables
+dotenv.config();
 
-// Server đã được khởi động trong file server.ts
-// File này được sử dụng để chạy server khi thực thi trực tiếp
-console.log('Vedic Astrology API Server is running');
+const PORT = process.env.PORT || 10000;
 
-export default app; 
+// Start server
+app.listen(PORT, () => {
+  console.log(`Vedic Astrology API Server is running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Ephemeris path: ${process.env.EPHE_PATH || './ephe'}`);
+});
+
+export default app;

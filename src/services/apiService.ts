@@ -1,7 +1,7 @@
-import { BirthDetails, ChartData } from "@/types/astrology.js";
+import { BirthDetails, ChartData } from "../types/astrology.js";
 
 // Base URL for API calls with fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api';
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:10000/api';
 
 // Fetch chart data from API
 export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartData> => {
@@ -18,7 +18,7 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
       throw new Error(`API error: ${response.status}`);
     }
 
-    return await response.json();
+    return await response.json() as ChartData;
   } catch (error) {
     console.error('Error fetching chart data:', error);
     throw error;

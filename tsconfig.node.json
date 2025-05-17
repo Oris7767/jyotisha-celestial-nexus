@@ -1,18 +1,12 @@
 {
   "compilerOptions": {
     "composite": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "esModuleInterop": true,
     "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "target": "es2020",
-    "outDir": "dist",
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "strict": true,
+    "outDir": "dist"
   },
-  "include": ["src/server.js", "src/index.ts", "src/services/astrologyService.ts", "src/config/swissephConfig.ts", "src/types/astrology.ts"]
+  "include": ["vite.config.ts", "build.js"]
 }

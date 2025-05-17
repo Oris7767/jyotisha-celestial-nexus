@@ -1,6 +1,10 @@
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Đảm bảo thư mục dist tồn tại
 if (!fs.existsSync('dist')) {
@@ -22,7 +26,38 @@ exec('vite build', (error, stdout, stderr) => {
   
   // Build server
   console.log('Building server...');
-  exec('tsc -p tsconfig.node.json', (error, stdout, stderr) => {
+  
+  // Create a temporary tsconfig for the server build
+  const tsConfigServer = {
+    compilerOptions: {
+      target: "ES2020",
+      useDefineForClassFields: true,
+      lib: ["ES2020", "DOM", "DOM.Iterable"],
+      module: "NodeNext",
+      skipLibCheck: true,
+      moduleResolution: "NodeNext",
+      allowImportingTsExtensions: false,
+      resolveJsonModule: true,
+      isolatedModules: true,
+      noEmit: false,
+      jsx: "react-jsx",
+      strict: true,
+      noUnusedLocals: true,
+      noUnusedParameters: true,
+      noFallthroughCasesInSwitch: true,
+      outDir: "dist",
+      esModuleInterop: true,
+      allowSyntheticDefaultImports: true,
+      forceConsistentCasingInFileNames: true
+    },
+    include: ["src/**/*.ts"],
+    exclude: ["src/**/*.tsx", "node_modules"]
+  };
+  
+  // Write temporary tsconfig
+  fs.writeFileSync('tsconfig.server.json', JSON.stringify(tsConfigServer, null, 2));
+  
+  exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
     if (error) {
       console.error(`Error building server: ${error.message}`);
       return;
@@ -31,6 +66,10 @@ exec('vite build', (error, stdout, stderr) => {
       console.error(`Server build stderr: ${stderr}`);
     }
     console.log(`Server build stdout: ${stdout}`);
+    
+    // Clean up temporary tsconfig
+    fs.unlinkSync('tsconfig.server.json');
+    
     console.log('Server build completed successfully!');
     
     // Sao chép thư mục ephe nếu cần

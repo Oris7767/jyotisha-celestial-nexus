@@ -1,8 +1,6 @@
-
 import express from 'express';
 import cors from 'cors';
-import { fetchChartData, fetchPlanetaryPositions, fetchAscendant, fetchDashas } from './services/astrologyService';
-import { BirthDetails } from './types/astrology';
+import { fetchChartData, fetchPlanetaryPositions, fetchAscendant, fetchDashas } from './services/astrologyService.js';
 import path from 'path';
 
 const app = express();
@@ -19,7 +17,7 @@ app.use(express.json());
 // API endpoints
 app.post('/api/chart', async (req, res) => {
   try {
-    const birthDetails = req.body as BirthDetails;
+    const birthDetails = req.body;
     const chartData = await fetchChartData(birthDetails);
     res.json(chartData);
   } catch (error) {
@@ -30,7 +28,7 @@ app.post('/api/chart', async (req, res) => {
 
 app.post('/api/planets', async (req, res) => {
   try {
-    const birthDetails = req.body as BirthDetails;
+    const birthDetails = req.body;
     const planets = await fetchPlanetaryPositions(birthDetails);
     res.json(planets);
   } catch (error) {
@@ -41,7 +39,7 @@ app.post('/api/planets', async (req, res) => {
 
 app.post('/api/ascendant', async (req, res) => {
   try {
-    const birthDetails = req.body as BirthDetails;
+    const birthDetails = req.body;
     const ascendant = await fetchAscendant(birthDetails);
     res.json(ascendant);
   } catch (error) {
@@ -52,7 +50,7 @@ app.post('/api/ascendant', async (req, res) => {
 
 app.post('/api/dashas', async (req, res) => {
   try {
-    const birthDetails = req.body as BirthDetails;
+    const birthDetails = req.body;
     const dashas = await fetchDashas(birthDetails);
     res.json(dashas);
   } catch (error) {
@@ -92,13 +90,6 @@ app.get('/', (req, res) => {
     ],
     documentation: 'For API usage instructions, see README.md'
   });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Ephemeris path: ${ephePath}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 export default app;

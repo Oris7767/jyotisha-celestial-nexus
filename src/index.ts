@@ -1,4 +1,4 @@
-import app from './server.js';
+import app from "./server.ts";
 import dotenv from 'dotenv';
 
 // Load environment variables

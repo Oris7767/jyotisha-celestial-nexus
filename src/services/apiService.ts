@@ -1,4 +1,4 @@
-import { BirthDetails, ChartData } from "@/types/astrology";
+import { BirthDetails, ChartData } from "@/types/astrology.js";
 
 // Base URL for API calls with fallback
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api';

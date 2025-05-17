@@ -1,4 +1,3 @@
-
 import swisseph, { 
   ZODIAC_SIGNS, 
   NAKSHATRAS, 
@@ -8,8 +7,8 @@ import swisseph, {
   DEFAULT_HOUSE_SYSTEM,
   DEFAULT_AYANAMSA,
   GREGORIAN_CALENDAR
-} from '../config/swissephConfig';
-import { BirthDetails, ChartData, PlanetaryPosition } from '../types/astrology';
+} from '../config/swissephConfig.js';
+import { BirthDetails, ChartData, PlanetaryPosition } from '../types/astrology.js';
 
 /**
  * Convert date and time to Julian day

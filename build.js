@@ -12,7 +12,7 @@ if (!fs.existsSync('dist')) {
   fs.mkdirSync('dist');
 }
 
-// Chỉ build server
+// Build server
 console.log('Building server...');
 
 // Create a temporary tsconfig for the server build with explicit settings
@@ -33,7 +33,7 @@ const tsConfigServer = {
     allowSyntheticDefaultImports: true,
     forceConsistentCasingInFileNames: true,
     declaration: false,
-    emitDeclarationOnly: false
+    emitDeclarationOnly: false,
   },
   include: ["src/**/*.ts"],
   exclude: ["src/**/*.tsx", "node_modules"]
@@ -42,6 +42,7 @@ const tsConfigServer = {
 // Write temporary tsconfig
 fs.writeFileSync('tsconfig.server.json', JSON.stringify(tsConfigServer, null, 2));
 
+// Thực thi các lệnh build một cách tuần tự
 exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
   if (error) {
     console.error(`Error building server: ${error.message}`);
@@ -73,6 +74,19 @@ exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
     });
     
     console.log('Ephemeris files copied successfully!');
+  }
+
+  // Tạo file môi trường trong dist nếu cần
+  if (!fs.existsSync('dist/.env')) {
+    console.log('Creating .env file in dist directory...');
+    if (fs.existsSync('.env')) {
+      fs.copyFileSync('.env', 'dist/.env');
+      console.log('.env file copied to dist directory.');
+    } else {
+      // Tạo file .env mặc định nếu không có
+      fs.writeFileSync('dist/.env', `PORT=10000\nEPHE_PATH=./ephe\nNODE_ENV=production\n`);
+      console.log('Default .env file created in dist directory.');
+    }
   }
   
   console.log('Build process completed!');

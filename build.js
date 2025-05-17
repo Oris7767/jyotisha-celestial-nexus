@@ -7,12 +7,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Đảm bảo thư mục dist tồn tại
+// Ensure dist directory exists
 if (!fs.existsSync('dist')) {
   fs.mkdirSync('dist');
 }
 
-// Build server
 console.log('Building server...');
 
 // Create a temporary tsconfig for the server build with explicit settings
@@ -20,7 +19,7 @@ const tsConfigServer = {
   compilerOptions: {
     target: "ES2020",
     useDefineForClassFields: true,
-    lib: ["ES2020", "DOM", "DOM.Iterable"],
+    lib: ["ES2020"],
     module: "NodeNext",
     skipLibCheck: true,
     moduleResolution: "NodeNext",
@@ -35,14 +34,14 @@ const tsConfigServer = {
     declaration: false,
     emitDeclarationOnly: false,
   },
-  include: ["src/**/*.ts"],
-  exclude: ["src/**/*.tsx", "node_modules"]
+  include: ["src/index.ts", "src/server.ts", "src/services/**/*.ts"],
+  exclude: ["src/**/*.tsx", "node_modules", "src/components/**/*", "src/pages/**/*", "src/hooks/**/*"]
 };
 
 // Write temporary tsconfig
 fs.writeFileSync('tsconfig.server.json', JSON.stringify(tsConfigServer, null, 2));
 
-// Thực thi các lệnh build một cách tuần tự
+// Execute build commands sequentially
 exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
   if (error) {
     console.error(`Error building server: ${error.message}`);
@@ -58,11 +57,11 @@ exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
   
   console.log('Server build completed successfully!');
   
-  // Sao chép thư mục ephe nếu cần
+  // Copy ephemeris files
   const epheSource = path.join(process.cwd(), 'ephe');
   const epheTarget = path.join(process.cwd(), 'dist', 'ephe');
   
-  if (fs.existsSync(epheSource) && !fs.existsSync(epheTarget)) {
+  if (fs.existsSync(epheSource)) {
     console.log('Copying ephemeris files...');
     fs.mkdirSync(epheTarget, { recursive: true });
     
@@ -70,24 +69,24 @@ exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
     files.forEach(file => {
       const sourceFile = path.join(epheSource, file);
       const targetFile = path.join(epheTarget, file);
-      fs.copyFileSync(sourceFile, targetFile);
+      if (fs.statSync(sourceFile).isFile()) {
+        fs.copyFileSync(sourceFile, targetFile);
+      }
     });
     
     console.log('Ephemeris files copied successfully!');
+  } else {
+    console.warn('Warning: ephemeris directory not found at', epheSource);
   }
 
-  // Tạo file môi trường trong dist nếu cần
-  if (!fs.existsSync('dist/.env')) {
-    console.log('Creating .env file in dist directory...');
-    if (fs.existsSync('.env')) {
-      fs.copyFileSync('.env', 'dist/.env');
-      console.log('.env file copied to dist directory.');
-    } else {
-      // Tạo file .env mặc định nếu không có
-      fs.writeFileSync('dist/.env', `PORT=10000\nEPHE_PATH=./ephe\nNODE_ENV=production\n`);
-      console.log('Default .env file created in dist directory.');
-    }
-  }
+  // Create .env file in dist if needed
+  console.log('Creating .env file in dist directory...');
+  const envContent = `PORT=${process.env.PORT || 10000}
+EPHE_PATH=${process.env.EPHE_PATH || './ephe'}
+NODE_ENV=${process.env.NODE_ENV || 'production'}
+`;
+  fs.writeFileSync('dist/.env', envContent);
+  console.log('.env file created in dist directory.');
   
   console.log('Build process completed!');
 });

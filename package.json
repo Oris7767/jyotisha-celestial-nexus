@@ -12,6 +12,7 @@
     "postinstall": "node build.js"
   },
   "dependencies": {
+    "@types/express": "^4.17.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -20,6 +21,8 @@
     "dotenv": "^16.5.0",
     "express": "^4.19.1",
     "lucide-react": "^0.462.0",
+    "react": "^18.2.0",
+    "sonner": "^1.4.0",
     "sweph": "^2.10.3-4",
     "swisseph": "^0.5.17",
     "tailwind-merge": "^2.5.2",

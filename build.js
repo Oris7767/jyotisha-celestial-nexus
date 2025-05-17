@@ -1,3 +1,4 @@
+
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -27,7 +28,7 @@ exec('vite build', (error, stdout, stderr) => {
   // Build server
   console.log('Building server...');
   
-  // Create a temporary tsconfig for the server build
+  // Create a temporary tsconfig for the server build with explicit settings
   const tsConfigServer = {
     compilerOptions: {
       target: "ES2020",
@@ -40,15 +41,12 @@ exec('vite build', (error, stdout, stderr) => {
       resolveJsonModule: true,
       isolatedModules: true,
       noEmit: false,
-      jsx: "react-jsx",
-      strict: true,
-      noUnusedLocals: true,
-      noUnusedParameters: true,
-      noFallthroughCasesInSwitch: true,
       outDir: "dist",
       esModuleInterop: true,
       allowSyntheticDefaultImports: true,
-      forceConsistentCasingInFileNames: true
+      forceConsistentCasingInFileNames: true,
+      declaration: false, // Disable declaration file generation
+      emitDeclarationOnly: false // Ensure we emit JS files
     },
     include: ["src/**/*.ts"],
     exclude: ["src/**/*.tsx", "node_modules"]

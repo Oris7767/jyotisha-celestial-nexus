@@ -12,82 +12,68 @@ if (!fs.existsSync('dist')) {
   fs.mkdirSync('dist');
 }
 
-// Build client (frontend)
-console.log('Building client...');
-exec('vite build', (error, stdout, stderr) => {
+// Chỉ build server
+console.log('Building server...');
+
+// Create a temporary tsconfig for the server build with explicit settings
+const tsConfigServer = {
+  compilerOptions: {
+    target: "ES2020",
+    useDefineForClassFields: true,
+    lib: ["ES2020", "DOM", "DOM.Iterable"],
+    module: "NodeNext",
+    skipLibCheck: true,
+    moduleResolution: "NodeNext",
+    allowImportingTsExtensions: false,
+    resolveJsonModule: true,
+    isolatedModules: true,
+    noEmit: false,
+    outDir: "dist",
+    esModuleInterop: true,
+    allowSyntheticDefaultImports: true,
+    forceConsistentCasingInFileNames: true,
+    declaration: false,
+    emitDeclarationOnly: false
+  },
+  include: ["src/**/*.ts"],
+  exclude: ["src/**/*.tsx", "node_modules"]
+};
+
+// Write temporary tsconfig
+fs.writeFileSync('tsconfig.server.json', JSON.stringify(tsConfigServer, null, 2));
+
+exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
   if (error) {
-    console.error(`Error building client: ${error.message}`);
+    console.error(`Error building server: ${error.message}`);
     return;
   }
   if (stderr) {
-    console.error(`Client build stderr: ${stderr}`);
+    console.error(`Server build stderr: ${stderr}`);
   }
-  console.log(`Client build stdout: ${stdout}`);
-  console.log('Client build completed successfully!');
+  console.log(`Server build stdout: ${stdout}`);
   
-  // Build server
-  console.log('Building server...');
+  // Clean up temporary tsconfig
+  fs.unlinkSync('tsconfig.server.json');
   
-  // Create a temporary tsconfig for the server build with explicit settings
-  const tsConfigServer = {
-    compilerOptions: {
-      target: "ES2020",
-      useDefineForClassFields: true,
-      lib: ["ES2020", "DOM", "DOM.Iterable"],
-      module: "NodeNext",
-      skipLibCheck: true,
-      moduleResolution: "NodeNext",
-      allowImportingTsExtensions: false,
-      resolveJsonModule: true,
-      isolatedModules: true,
-      noEmit: false,
-      outDir: "dist",
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-      forceConsistentCasingInFileNames: true,
-      declaration: false, // Disable declaration file generation
-      emitDeclarationOnly: false // Ensure we emit JS files
-    },
-    include: ["src/**/*.ts"],
-    exclude: ["src/**/*.tsx", "node_modules"]
-  };
+  console.log('Server build completed successfully!');
   
-  // Write temporary tsconfig
-  fs.writeFileSync('tsconfig.server.json', JSON.stringify(tsConfigServer, null, 2));
+  // Sao chép thư mục ephe nếu cần
+  const epheSource = path.join(process.cwd(), 'ephe');
+  const epheTarget = path.join(process.cwd(), 'dist', 'ephe');
   
-  exec('tsc -p tsconfig.server.json', (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error building server: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`Server build stderr: ${stderr}`);
-    }
-    console.log(`Server build stdout: ${stdout}`);
+  if (fs.existsSync(epheSource) && !fs.existsSync(epheTarget)) {
+    console.log('Copying ephemeris files...');
+    fs.mkdirSync(epheTarget, { recursive: true });
     
-    // Clean up temporary tsconfig
-    fs.unlinkSync('tsconfig.server.json');
+    const files = fs.readdirSync(epheSource);
+    files.forEach(file => {
+      const sourceFile = path.join(epheSource, file);
+      const targetFile = path.join(epheTarget, file);
+      fs.copyFileSync(sourceFile, targetFile);
+    });
     
-    console.log('Server build completed successfully!');
-    
-    // Sao chép thư mục ephe nếu cần
-    const epheSource = path.join(process.cwd(), 'ephe');
-    const epheTarget = path.join(process.cwd(), 'dist', 'ephe');
-    
-    if (fs.existsSync(epheSource) && !fs.existsSync(epheTarget)) {
-      console.log('Copying ephemeris files...');
-      fs.mkdirSync(epheTarget, { recursive: true });
-      
-      const files = fs.readdirSync(epheSource);
-      files.forEach(file => {
-        const sourceFile = path.join(epheSource, file);
-        const targetFile = path.join(epheTarget, file);
-        fs.copyFileSync(sourceFile, targetFile);
-      });
-      
-      console.log('Ephemeris files copied successfully!');
-    }
-    
-    console.log('Build process completed!');
-  });
+    console.log('Ephemeris files copied successfully!');
+  }
+  
+  console.log('Build process completed!');
 });

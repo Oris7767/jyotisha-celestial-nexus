@@ -60,7 +60,7 @@ app.post('/api/dashas', async (req, res) => {
 });
 
 // Determine ephemeris path with priority for environment variable
-const ephePath = process.env.EPHE_PATH || path.resolve(__dirname, '../ephe');
+const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
 console.log(`Using ephemeris path: ${ephePath}`);
 
 // Serve static ephemeris files

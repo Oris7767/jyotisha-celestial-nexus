@@ -102,7 +102,7 @@ export const HOUSE_SYSTEMS = {
 };
 
 // Default house system
-export const DEFAULT_HOUSE_SYSTEM = HOUSE_SYSTEMS.PLACIDUS;
+export const DEFAULT_HOUSE_SYSTEM = HOUSE_SYSTEMS.WHOLE_SIGN;
 
 // Ayanamsa types
 export const AYANAMSA_TYPES = {

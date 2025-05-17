@@ -20,9 +20,9 @@ app.post('/api/chart', async (req, res) => {
     const birthDetails = req.body;
     const chartData = await fetchChartData(birthDetails);
     res.json(chartData);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating chart:', error);
-    res.status(500).json({ error: 'Failed to generate chart', message: error.message });
+    res.status(500).json({ error: 'Failed to generate chart', message: error.message || 'Unknown error' });
   }
 });
 
@@ -31,9 +31,9 @@ app.post('/api/planets', async (req, res) => {
     const birthDetails = req.body;
     const planets = await fetchPlanetaryPositions(birthDetails);
     res.json(planets);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching planets:', error);
-    res.status(500).json({ error: 'Failed to fetch planetary positions', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch planetary positions', message: error.message || 'Unknown error' });
   }
 });
 
@@ -42,9 +42,9 @@ app.post('/api/ascendant', async (req, res) => {
     const birthDetails = req.body;
     const ascendant = await fetchAscendant(birthDetails);
     res.json(ascendant);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching ascendant:', error);
-    res.status(500).json({ error: 'Failed to fetch ascendant', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch ascendant', message: error.message || 'Unknown error' });
   }
 });
 
@@ -53,9 +53,9 @@ app.post('/api/dashas', async (req, res) => {
     const birthDetails = req.body;
     const dashas = await fetchDashas(birthDetails);
     res.json(dashas);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching dashas:', error);
-    res.status(500).json({ error: 'Failed to fetch dashas', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch dashas', message: error.message || 'Unknown error' });
   }
 });
 

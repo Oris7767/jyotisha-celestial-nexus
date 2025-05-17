@@ -37,9 +37,27 @@ const getJulianDay = (birthDetails: BirthDetails): number => {
  */
 const calculateAyanamsa = (julianDay: number): number => {
   // Use default ayanamsa (Lahiri in Vedic)
-  // Fixed: Passing the correct number of arguments to swe_get_ayanamsa
   return swisseph.swe_get_ayanamsa(julianDay);
 };
+
+// Define types for SwissEph returns to handle various return formats
+interface SwissEphPlanetResult {
+  longitude?: number;
+  latitude?: number;
+  distance?: number;
+  longitudeSpeed?: number;
+  latitudeSpeed?: number;
+  distanceSpeed?: number;
+  rflag?: number;
+  // For equatorial coords
+  rectAscension?: number;
+  declination?: number;
+  rectAscensionSpeed?: number;
+  declinationSpeed?: number;
+  // Add status field for error checking
+  status?: number;
+  error?: string;
+}
 
 /**
  * Calculate planetary positions
@@ -54,20 +72,29 @@ const calculatePlanetaryPositions = (
   // Calculate for each planet
   for (const [planetName, planetId] of Object.entries(PLANETS)) {
     let flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED;
-    let result;
+    let result: SwissEphPlanetResult;
     
     // Special calculation for Ketu (South Node)
     if (planetName === 'KETU') {
       // Get Rahu position first
-      result = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
+      const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag) as SwissEphPlanetResult;
       // Ketu is 180° opposite to Rahu
-      result.longitude = (result.longitude + 180) % 360;
+      result = { ...rahuResult };
+      if (result.longitude !== undefined) {
+        result.longitude = (result.longitude + 180) % 360;
+      }
     } else {
-      result = swisseph.swe_calc_ut(julianDay, planetId, flag);
+      result = swisseph.swe_calc_ut(julianDay, planetId, flag) as SwissEphPlanetResult;
     }
     
-    if (result.error) {
-      console.error(`Error calculating ${planetName}:`, result.error);
+    if (result.status && result.status < 0) {
+      console.error(`Error calculating ${planetName}:`, result.error || 'Unknown error');
+      continue;
+    }
+    
+    // Check if we have valid longitude data
+    if (result.longitude === undefined) {
+      console.error(`Missing longitude data for ${planetName}`);
       continue;
     }
     
@@ -85,13 +112,15 @@ const calculatePlanetaryPositions = (
     // Determine house
     const house = findHouse(siderealLongitude, housePositions);
     
-    // Detect retrograde motion
-    const retrograde = result.speedLong < 0;
+    // Detect retrograde motion - the property name is longitudeSpeed in recent versions
+    const retrograde = (result.longitudeSpeed !== undefined) 
+      ? result.longitudeSpeed < 0 
+      : false;
     
     planets.push({
       planet: planetName,
       longitude: siderealLongitude,
-      latitude: result.lat,
+      latitude: result.latitude || 0,
       house,
       sign,
       nakshatra,
@@ -106,9 +135,11 @@ const calculatePlanetaryPositions = (
  * Find which house a planet belongs to based on its longitude
  */
 const findHouse = (longitude: number, housePositions: number[]): number => {
+  // ... keep existing code (house calculation function)
+  
+  // Check if longitude is between this house cusp and next
   for (let i = 0; i < 12; i++) {
     const nextHouse = (i + 1) % 12;
-    // Check if longitude is between this house cusp and next
     if (i === 11) {
       if ((longitude >= housePositions[i]) || (longitude < housePositions[nextHouse])) {
         return i + 1;
@@ -138,8 +169,8 @@ interface HouseResult {
  * Calculate house cusps
  */
 const safeCalculateHouses = (julianDay: number, latitude: number, longitude: number): number[] => {
+  // ... keep existing code (house cusps calculation)
   try {
-    // Fixed: passing DEFAULT_HOUSE_SYSTEM as string
     const houses = swisseph.swe_houses(
       julianDay, 
       latitude, 
@@ -147,7 +178,6 @@ const safeCalculateHouses = (julianDay: number, latitude: number, longitude: num
       DEFAULT_HOUSE_SYSTEM as string
     ) as HouseResult;
     
-    // Fixed: Safely check if houses.house exists before accessing it
     if (!houses || !houses.house) {
       throw new Error("Failed to calculate houses");
     }
@@ -177,8 +207,16 @@ const calculateDashas = (julianDay: number, moonLongitude: number): any => {
   // Find the lord of birth nakshatra
   const birthNakshatraLord = NAKSHATRA_LORDS[nakshatraIndex];
   
+  // Type-safe access to DASHA_PERIODS
+  const getDashaPeriod = (lord: string): number => {
+    if (lord in DASHA_PERIODS) {
+      return (DASHA_PERIODS as Record<string, number>)[lord];
+    }
+    return 0; // Default if not found
+  };
+  
   // Calculate remaining portion of the dasha at birth
-  const birthDashaLordPeriod = DASHA_PERIODS[birthNakshatraLord];
+  const birthDashaLordPeriod = getDashaPeriod(birthNakshatraLord);
   const remainingDashaYears = birthDashaLordPeriod * (1 - nakshatraProgressPercent);
   
   // Find dasha sequence starting from birth nakshatra lord
@@ -204,7 +242,7 @@ const calculateDashas = (julianDay: number, moonLongitude: number): any => {
   // Add subsequent dashas
   for (let i = 1; i < dashaSequence.length; i++) {
     const planet = dashaSequence[i];
-    const periodYears = DASHA_PERIODS[planet];
+    const periodYears = getDashaPeriod(planet);
     currentDate = new Date(currentDate.getTime() + periodYears * 365.25 * 24 * 60 * 60 * 1000);
     dashas.push({
       planet,
@@ -273,9 +311,9 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
       houses,
       dashas
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating chart:', error);
-    throw new Error(`Failed to generate chart: ${error.message}`);
+    throw new Error(`Failed to generate chart: ${error?.message || 'Unknown error'}`);
   }
 };
 
@@ -288,9 +326,9 @@ export const fetchPlanetaryPositions = async (birthDetails: BirthDetails) => {
     const ayanamsa = calculateAyanamsa(julianDay);
     const houseCusps = safeCalculateHouses(julianDay, birthDetails.latitude, birthDetails.longitude);
     return calculatePlanetaryPositions(julianDay, ayanamsa, houseCusps);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching planetary positions:', error);
-    throw new Error(`Failed to fetch planetary positions: ${error.message}`);
+    throw new Error(`Failed to fetch planetary positions: ${error?.message || 'Unknown error'}`);
   }
 };
 
@@ -313,9 +351,9 @@ export const fetchAscendant = async (birthDetails: BirthDetails) => {
       degree: ascendantLongitude % 30,
       nakshatra: ascendantNakshatra
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching ascendant:', error);
-    throw new Error(`Failed to fetch ascendant: ${error.message}`);
+    throw new Error(`Failed to fetch ascendant: ${error?.message || 'Unknown error'}`);
   }
 };
 
@@ -333,8 +371,8 @@ export const fetchDashas = async (birthDetails: BirthDetails) => {
     const moonLongitude = moon ? moon.longitude : 0;
     
     return calculateDashas(julianDay, moonLongitude);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching dashas:', error);
-    throw new Error(`Failed to fetch dashas: ${error.message}`);
+    throw new Error(`Failed to fetch dashas: ${error?.message || 'Unknown error'}`);
   }
 };

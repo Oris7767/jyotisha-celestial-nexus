@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "build:dev": "vite build --mode development",
     "build": "tsc && vite build",
     "build:server": "tsc -p tsconfig.node.json",

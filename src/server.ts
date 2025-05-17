@@ -22,7 +22,7 @@ app.post('/api/chart', async (req, res) => {
     res.json(chartData);
   } catch (error: any) {
     console.error('Error generating chart:', error);
-    res.status(500).json({ error: 'Failed to generate chart', message: error.message || 'Unknown error' });
+    res.status(500).json({ error: 'Failed to generate chart', message: error?.message || 'Unknown error' });
   }
 });
 
@@ -33,7 +33,7 @@ app.post('/api/planets', async (req, res) => {
     res.json(planets);
   } catch (error: any) {
     console.error('Error fetching planets:', error);
-    res.status(500).json({ error: 'Failed to fetch planetary positions', message: error.message || 'Unknown error' });
+    res.status(500).json({ error: 'Failed to fetch planetary positions', message: error?.message || 'Unknown error' });
   }
 });
 
@@ -44,7 +44,7 @@ app.post('/api/ascendant', async (req, res) => {
     res.json(ascendant);
   } catch (error: any) {
     console.error('Error fetching ascendant:', error);
-    res.status(500).json({ error: 'Failed to fetch ascendant', message: error.message || 'Unknown error' });
+    res.status(500).json({ error: 'Failed to fetch ascendant', message: error?.message || 'Unknown error' });
   }
 });
 
@@ -55,7 +55,7 @@ app.post('/api/dashas', async (req, res) => {
     res.json(dashas);
   } catch (error: any) {
     console.error('Error fetching dashas:', error);
-    res.status(500).json({ error: 'Failed to fetch dashas', message: error.message || 'Unknown error' });
+    res.status(500).json({ error: 'Failed to fetch dashas', message: error?.message || 'Unknown error' });
   }
 });
 

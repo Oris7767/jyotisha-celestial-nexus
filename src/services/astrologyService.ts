@@ -1,3 +1,4 @@
+
 import swisseph, { 
   ZODIAC_SIGNS, 
   NAKSHATRAS, 
@@ -57,6 +58,9 @@ interface SwissEphPlanetResult {
   // Add status field for error checking
   status?: number;
   error?: string;
+  // Legacy fields (may be present in some versions of swisseph)
+  speedLong?: number;
+  lat?: number;
 }
 
 /**
@@ -112,15 +116,15 @@ const calculatePlanetaryPositions = (
     // Determine house
     const house = findHouse(siderealLongitude, housePositions);
     
-    // Detect retrograde motion - the property name is longitudeSpeed in recent versions
-    const retrograde = (result.longitudeSpeed !== undefined) 
+    // Detect retrograde motion - handle different property names for retrograde detection
+    const retrograde = result.longitudeSpeed !== undefined 
       ? result.longitudeSpeed < 0 
-      : false;
+      : (result.speedLong !== undefined ? result.speedLong < 0 : false);
     
     planets.push({
       planet: planetName,
       longitude: siderealLongitude,
-      latitude: result.latitude || 0,
+      latitude: result.latitude || result.lat || 0, // Handle both property names
       house,
       sign,
       nakshatra,

@@ -22,7 +22,7 @@ const normalizeAngle = (angle: number): number => {
  * Convert date and time to Julian day
  */
 const getJulianDay = (birthDetails: BirthDetails): number => {
-  const { date, time } = birthDetails;
+  const { date, time, timezone } = birthDetails;
   
   // Parse date and time
   const [year, month, day] = date.split('-').map(Number);
@@ -55,6 +55,7 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
     // Calculate houses using Swiss Ephemeris
     const flag = swisseph.SEFLG_SIDEREAL; // Use sidereal zodiac
     
+    // Use Whole Sign house system
     const houses = swisseph.swe_houses(
       julianDay,
       latitude,
@@ -129,72 +130,107 @@ const calculatePlanetaryPositions = (julianDay: number, birthDetails: BirthDetai
   
   // Calculate for each planet
   for (const [planetName, planetId] of Object.entries(PLANETS)) {
-    let flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
-    let result;
-    
-    // Special calculation for Ketu (South Node)
-    if (planetName === 'KETU') {
-      // Get Rahu position first
-      const [rahuXX, rahuRet] = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
-      // Ketu is 180° opposite to Rahu
-      const ketuLongitude = normalizeAngle(rahuXX[0] + 180);
+    try {
+      let flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
+      let longitude: number = 0;
+      let latitude: number = 0;
+      let distance: number = 0;
+      let longitudeSpeed: number = 0;
+      let latitudeSpeed: number = 0;
+      let distanceSpeed: number = 0;
+      let status: number = 0;
       
-      // Create result object with Ketu's values
-      result = {
-        longitude: ketuLongitude,
-        latitude: -rahuXX[1], // Opposite latitude
-        distance: rahuXX[2],
-        longitudeSpeed: -rahuXX[3], // Opposite speed
-        latitudeSpeed: -rahuXX[4],
-        distanceSpeed: rahuXX[5],
-        status: rahuRet
-      };
-    } else {
-      // For all other planets, properly handle the return value of swe_calc_ut
-      const [xx, ret] = swisseph.swe_calc_ut(julianDay, planetId, flag);
+      // Special calculation for Ketu (South Node)
+      if (planetName === 'KETU') {
+        // Get Rahu position first
+        const calcResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
+        
+        // Make sure calcResult is an array with at least 2 elements
+        if (Array.isArray(calcResult) && calcResult.length >= 2) {
+          const xx = calcResult[0];
+          const ret = calcResult[1];
+          
+          // Ensure xx is an array with the expected properties
+          if (Array.isArray(xx) && xx.length >= 6) {
+            // Ketu is 180° opposite to Rahu
+            longitude = normalizeAngle(xx[0] + 180);
+            latitude = -xx[1]; // Opposite latitude
+            distance = xx[2];
+            longitudeSpeed = -xx[3]; // Opposite speed
+            latitudeSpeed = -xx[4];
+            distanceSpeed = xx[5];
+            status = ret;
+          } else {
+            console.error(`Invalid xx format for ${planetName}`);
+            continue;
+          }
+        } else {
+          console.error(`Invalid calcResult format for ${planetName}`);
+          continue;
+        }
+      } else {
+        // For all other planets
+        const calcResult = swisseph.swe_calc_ut(julianDay, planetId, flag);
+        
+        // Make sure calcResult is an array with at least 2 elements
+        if (Array.isArray(calcResult) && calcResult.length >= 2) {
+          const xx = calcResult[0];
+          const ret = calcResult[1];
+          
+          // Ensure xx is an array with the expected properties
+          if (Array.isArray(xx) && xx.length >= 6) {
+            longitude = xx[0];
+            latitude = xx[1];
+            distance = xx[2];
+            longitudeSpeed = xx[3];
+            latitudeSpeed = xx[4];
+            distanceSpeed = xx[5];
+            status = ret;
+          } else {
+            console.error(`Invalid xx format for ${planetName}`);
+            continue;
+          }
+        } else {
+          console.error(`Invalid calcResult format for ${planetName}`);
+          continue;
+        }
+      }
       
-      result = {
-        longitude: xx[0],
-        latitude: xx[1],
-        distance: xx[2],
-        longitudeSpeed: xx[3],
-        latitudeSpeed: xx[4],
-        distanceSpeed: xx[5],
-        status: ret
-      };
+      if (status < 0) {
+        console.error(`Error calculating ${planetName}:`, status);
+        continue;
+      }
+      
+      // Normalize the longitude to ensure it's between 0 and 360
+      const siderealLongitude = normalizeAngle(longitude);
+      
+      // Determine zodiac sign
+      const signIndex = Math.floor(siderealLongitude / 30);
+      const sign = ZODIAC_SIGNS[signIndex];
+      
+      // Determine nakshatra (27 nakshatras of 13°20' each)
+      const nakshatraIndex = Math.floor(siderealLongitude / (360/27)) % 27;
+      const nakshatra = NAKSHATRAS[nakshatraIndex];
+      
+      // Determine house (Whole Sign system)
+      const house = findHouseWholeSign(siderealLongitude, ascendantSign);
+      
+      // Detect retrograde motion
+      const retrograde = longitudeSpeed < 0;
+      
+      planets.push({
+        planet: planetName,
+        longitude: siderealLongitude,
+        latitude: latitude,
+        house,
+        sign,
+        nakshatra,
+        retrograde
+      });
+    } catch (error) {
+      console.error(`Error calculating position for ${planetName}:`, error);
+      // Skip this planet and continue with others
     }
-    
-    if (result.status < 0) {
-      console.error(`Error calculating ${planetName}:`, result.status);
-      continue;
-    }
-    
-    // Normalize the longitude to ensure it's between 0 and 360
-    const siderealLongitude = normalizeAngle(result.longitude);
-    
-    // Determine zodiac sign
-    const signIndex = Math.floor(siderealLongitude / 30);
-    const sign = ZODIAC_SIGNS[signIndex];
-    
-    // Determine nakshatra (27 nakshatras of 13°20' each)
-    const nakshatraIndex = Math.floor(siderealLongitude / (360/27)) % 27;
-    const nakshatra = NAKSHATRAS[nakshatraIndex];
-    
-    // Determine house (Whole Sign system)
-    const house = findHouseWholeSign(siderealLongitude, ascendantSign);
-    
-    // Detect retrograde motion
-    const retrograde = result.longitudeSpeed < 0;
-    
-    planets.push({
-      planet: planetName,
-      longitude: siderealLongitude,
-      latitude: result.latitude,
-      house,
-      sign,
-      nakshatra,
-      retrograde
-    });
   }
   
   return planets;
@@ -204,69 +240,78 @@ const calculatePlanetaryPositions = (julianDay: number, birthDetails: BirthDetai
  * Calculate Vimshottari Dasha periods
  */
 const calculateDashas = (julianDay: number, moonLongitude: number): any => {
-  // Normalize Moon's longitude to ensure it's between 0 and 360
-  const normalizedMoonLongitude = normalizeAngle(moonLongitude);
-  
-  // Calculate Moon's nakshatra position (0-27)
-  const totalNakshatraSpan = 360;
-  const nakshatraCount = 27;
-  const nakshatraLength = totalNakshatraSpan / nakshatraCount;
-  const nakshatraPosition = normalizedMoonLongitude / nakshatraLength;
-  const nakshatraIndex = Math.floor(nakshatraPosition) % 27;
-  
-  // Calculate the percentage of nakshatra traversed
-  const nakshatraProgressPercent = (nakshatraPosition - nakshatraIndex);
-  
-  // Find the lord of birth nakshatra
-  const birthNakshatraLord = NAKSHATRA_LORDS[nakshatraIndex];
-  
-  // Type-safe access to DASHA_PERIODS
-  const getDashaPeriod = (lord: string): number => {
-    if (lord in DASHA_PERIODS) {
-      return (DASHA_PERIODS as Record<string, number>)[lord];
+  try {
+    // Normalize Moon's longitude to ensure it's between 0 and 360
+    const normalizedMoonLongitude = normalizeAngle(moonLongitude);
+    
+    // Calculate Moon's nakshatra position (0-27)
+    const totalNakshatraSpan = 360;
+    const nakshatraCount = 27;
+    const nakshatraLength = totalNakshatraSpan / nakshatraCount;
+    const nakshatraPosition = normalizedMoonLongitude / nakshatraLength;
+    const nakshatraIndex = Math.floor(nakshatraPosition) % 27;
+    
+    // Calculate the percentage of nakshatra traversed
+    const nakshatraProgressPercent = (nakshatraPosition - nakshatraIndex);
+    
+    // Find the lord of birth nakshatra
+    const birthNakshatraLord = NAKSHATRA_LORDS[nakshatraIndex];
+    
+    // Type-safe access to DASHA_PERIODS
+    const getDashaPeriod = (lord: string): number => {
+      if (lord in DASHA_PERIODS) {
+        return (DASHA_PERIODS as Record<string, number>)[lord];
+      }
+      return 0; // Default if not found
+    };
+    
+    // Calculate remaining portion of the dasha at birth
+    const birthDashaLordPeriod = getDashaPeriod(birthNakshatraLord);
+    const remainingDashaYears = birthDashaLordPeriod * (1 - nakshatraProgressPercent);
+    
+    // Find dasha sequence starting from birth nakshatra lord
+    const dashaSequence = [];
+    const lordIndex = NAKSHATRA_LORDS.indexOf(birthNakshatraLord);
+    const uniqueLords = [...new Set(NAKSHATRA_LORDS)];
+    
+    for (let i = 0; i < uniqueLords.length; i++) {
+      const index = (lordIndex + i) % uniqueLords.length;
+      dashaSequence.push(uniqueLords[index]);
     }
-    return 0; // Default if not found
-  };
-  
-  // Calculate remaining portion of the dasha at birth
-  const birthDashaLordPeriod = getDashaPeriod(birthNakshatraLord);
-  const remainingDashaYears = birthDashaLordPeriod * (1 - nakshatraProgressPercent);
-  
-  // Find dasha sequence starting from birth nakshatra lord
-  const dashaSequence = [];
-  const lordIndex = NAKSHATRA_LORDS.indexOf(birthNakshatraLord);
-  const uniqueLords = [...new Set(NAKSHATRA_LORDS)];
-  
-  for (let i = 0; i < uniqueLords.length; i++) {
-    const index = (lordIndex + i) % uniqueLords.length;
-    dashaSequence.push(uniqueLords[index]);
-  }
-  
-  // Calculate end dates for each dasha
-  const dashas = [];
-  let currentDate = new Date();
-  
-  // Add birth dasha with remaining years
-  dashas.push({
-    planet: birthNakshatraLord,
-    endDate: new Date(currentDate.getTime() + remainingDashaYears * 365.25 * 24 * 60 * 60 * 1000)
-  });
-  
-  // Add subsequent dashas
-  for (let i = 1; i < dashaSequence.length; i++) {
-    const planet = dashaSequence[i];
-    const periodYears = getDashaPeriod(planet);
-    currentDate = new Date(currentDate.getTime() + periodYears * 365.25 * 24 * 60 * 60 * 1000);
+    
+    // Calculate end dates for each dasha
+    const dashas = [];
+    let currentDate = new Date();
+    
+    // Add birth dasha with remaining years
     dashas.push({
-      planet,
-      endDate: new Date(currentDate)
+      planet: birthNakshatraLord,
+      endDate: new Date(currentDate.getTime() + remainingDashaYears * 365.25 * 24 * 60 * 60 * 1000)
     });
+    
+    // Add subsequent dashas
+    for (let i = 1; i < dashaSequence.length; i++) {
+      const planet = dashaSequence[i];
+      const periodYears = getDashaPeriod(planet);
+      currentDate = new Date(currentDate.getTime() + periodYears * 365.25 * 24 * 60 * 60 * 1000);
+      dashas.push({
+        planet,
+        endDate: new Date(currentDate)
+      });
+    }
+    
+    return {
+      current: birthNakshatraLord,
+      sequence: dashas
+    };
+  } catch (error) {
+    console.error("Error calculating dashas:", error);
+    // Return minimal data structure to avoid crashes
+    return {
+      current: "Unknown",
+      sequence: []
+    };
   }
-  
-  return {
-    current: birthNakshatraLord,
-    sequence: dashas
-  };
 };
 
 /**
@@ -274,6 +319,8 @@ const calculateDashas = (julianDay: number, moonLongitude: number): any => {
  */
 export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartData> => {
   try {
+    console.log("Fetching chart data with birth details:", JSON.stringify(birthDetails));
+    
     // Calculate Julian day
     const julianDay = getJulianDay(birthDetails);
     

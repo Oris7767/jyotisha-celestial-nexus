@@ -1,3 +1,4 @@
+
 import swisseph, { 
   ZODIAC_SIGNS, 
   NAKSHATRAS, 
@@ -48,10 +49,12 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
   houseCusps: number[];
 } => {
   try {
-    // First, calculate ascendant using Swiss Ephemeris
+    // Always set the sidereal mode first - IMPORTANT for Vedic calculations
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    
+    // Calculate houses using Swiss Ephemeris
     const flag = swisseph.SEFLG_SIDEREAL; // Use sidereal zodiac
     
-    // Fix the type issue by handling potentially different return types
     const houses = swisseph.swe_houses(
       julianDay,
       latitude,
@@ -59,12 +62,12 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
       'W' // Whole Sign house system
     );
 
-    // Check if houses is an error object
-    if ('error' in houses) {
-      throw new Error(`Failed to calculate houses: ${houses.error}`);
+    // Check if houses is null or an error object
+    if (!houses || 'error' in houses) {
+      throw new Error(`Failed to calculate houses: ${houses?.error || 'Unknown error'}`);
     }
     
-    // Now TypeScript knows houses has ascendant property
+    // Now access the ascendant property safely
     const ascendant = houses.ascendant;
     
     // In Whole Sign system, houses start at 0° of the sign containing the ascendant
@@ -109,11 +112,19 @@ const findHouseWholeSign = (longitude: number, ascendantSign: number): number =>
 /**
  * Calculate planetary positions
  */
-const calculatePlanetaryPositions = (julianDay: number): PlanetaryPosition[] => {
+const calculatePlanetaryPositions = (julianDay: number, birthDetails: BirthDetails): PlanetaryPosition[] => {
   const planets: PlanetaryPosition[] = [];
   
+  // Always set the sidereal mode first - IMPORTANT for Vedic calculations
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+  
   // Get ascendant to determine house positions in Whole Sign system
-  const { ascendant } = calculateHousesWholeSign(julianDay, 0, 0);
+  const { ascendant, houseCusps } = calculateHousesWholeSign(
+    julianDay, 
+    birthDetails.latitude, 
+    birthDetails.longitude
+  );
+  
   const ascendantSign = Math.floor(ascendant / 30);
   
   // Calculate for each planet
@@ -124,24 +135,37 @@ const calculatePlanetaryPositions = (julianDay: number): PlanetaryPosition[] => 
     // Special calculation for Ketu (South Node)
     if (planetName === 'KETU') {
       // Get Rahu position first
-      const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
+      const [rahuXX, rahuRet] = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
       // Ketu is 180° opposite to Rahu
-      result = { ...rahuResult };
-      if (result.longitude !== undefined) {
-        result.longitude = normalizeAngle(result.longitude + 180);
-      }
+      const ketuLongitude = normalizeAngle(rahuXX[0] + 180);
+      
+      // Create result object with Ketu's values
+      result = {
+        longitude: ketuLongitude,
+        latitude: -rahuXX[1], // Opposite latitude
+        distance: rahuXX[2],
+        longitudeSpeed: -rahuXX[3], // Opposite speed
+        latitudeSpeed: -rahuXX[4],
+        distanceSpeed: rahuXX[5],
+        status: rahuRet
+      };
     } else {
-      result = swisseph.swe_calc_ut(julianDay, planetId, flag);
+      // For all other planets, properly handle the return value of swe_calc_ut
+      const [xx, ret] = swisseph.swe_calc_ut(julianDay, planetId, flag);
+      
+      result = {
+        longitude: xx[0],
+        latitude: xx[1],
+        distance: xx[2],
+        longitudeSpeed: xx[3],
+        latitudeSpeed: xx[4],
+        distanceSpeed: xx[5],
+        status: ret
+      };
     }
     
-    if (result.status && result.status < 0) {
-      console.error(`Error calculating ${planetName}:`, result.error || 'Unknown error');
-      continue;
-    }
-    
-    // Check if we have valid longitude data
-    if (result.longitude === undefined) {
-      console.error(`Missing longitude data for ${planetName}`);
+    if (result.status < 0) {
+      console.error(`Error calculating ${planetName}:`, result.status);
       continue;
     }
     
@@ -153,22 +177,19 @@ const calculatePlanetaryPositions = (julianDay: number): PlanetaryPosition[] => 
     const sign = ZODIAC_SIGNS[signIndex];
     
     // Determine nakshatra (27 nakshatras of 13°20' each)
-    // Use normalized longitude to prevent out-of-range indices
     const nakshatraIndex = Math.floor(siderealLongitude / (360/27)) % 27;
     const nakshatra = NAKSHATRAS[nakshatraIndex];
     
     // Determine house (Whole Sign system)
     const house = findHouseWholeSign(siderealLongitude, ascendantSign);
     
-    // Detect retrograde motion - handle different property names for retrograde detection
-    const retrograde = result.longitudeSpeed !== undefined 
-      ? result.longitudeSpeed < 0 
-      : (result.speedLong !== undefined ? result.speedLong < 0 : false);
+    // Detect retrograde motion
+    const retrograde = result.longitudeSpeed < 0;
     
     planets.push({
       planet: planetName,
       longitude: siderealLongitude,
-      latitude: result.latitude || result.lat || 0, // Handle both property names
+      latitude: result.latitude,
       house,
       sign,
       nakshatra,
@@ -256,6 +277,9 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
     // Calculate Julian day
     const julianDay = getJulianDay(birthDetails);
     
+    // Always set the sidereal mode first - IMPORTANT for Vedic calculations
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    
     // Calculate ascendant and house cusps using Whole Sign system
     const { ascendant, houseCusps } = calculateHousesWholeSign(
       julianDay, 
@@ -272,7 +296,7 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
     const ascendantNakshatra = NAKSHATRAS[ascendantNakshatraIndex];
     
     // Calculate planetary positions
-    const planetaryPositions = calculatePlanetaryPositions(julianDay);
+    const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
     
     // Find Moon's longitude for dasha calculations
     const moon = planetaryPositions.find(p => p.planet === 'MOON');
@@ -313,7 +337,7 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
 export const fetchPlanetaryPositions = async (birthDetails: BirthDetails) => {
   try {
     const julianDay = getJulianDay(birthDetails);
-    return calculatePlanetaryPositions(julianDay);
+    return calculatePlanetaryPositions(julianDay, birthDetails);
   } catch (error: any) {
     console.error('Error fetching planetary positions:', error);
     throw new Error(`Failed to fetch planetary positions: ${error?.message || 'Unknown error'}`);
@@ -326,6 +350,9 @@ export const fetchPlanetaryPositions = async (birthDetails: BirthDetails) => {
 export const fetchAscendant = async (birthDetails: BirthDetails) => {
   try {
     const julianDay = getJulianDay(birthDetails);
+    
+    // Always set the sidereal mode first
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
     
     // Calculate ascendant
     const { ascendant } = calculateHousesWholeSign(
@@ -359,7 +386,11 @@ export const fetchAscendant = async (birthDetails: BirthDetails) => {
 export const fetchDashas = async (birthDetails: BirthDetails) => {
   try {
     const julianDay = getJulianDay(birthDetails);
-    const planetaryPositions = calculatePlanetaryPositions(julianDay);
+    
+    // Always set the sidereal mode
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    
+    const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
     
     const moon = planetaryPositions.find(p => p.planet === 'MOON');
     const moonLongitude = moon ? moon.longitude : 0;

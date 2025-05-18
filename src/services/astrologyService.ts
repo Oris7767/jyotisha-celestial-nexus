@@ -1,4 +1,3 @@
-
 import swisseph, { 
   ZODIAC_SIGNS, 
   NAKSHATRAS, 
@@ -51,6 +50,8 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
   try {
     // First, calculate ascendant using Swiss Ephemeris
     const flag = swisseph.SEFLG_SIDEREAL; // Use sidereal zodiac
+    
+    // Fix the type issue by handling potentially different return types
     const houses = swisseph.swe_houses(
       julianDay,
       latitude,
@@ -58,11 +59,12 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
       'W' // Whole Sign house system
     );
 
-    if (!houses || !houses.ascendant) {
-      throw new Error("Failed to calculate houses");
+    // Check if houses is an error object
+    if ('error' in houses) {
+      throw new Error(`Failed to calculate houses: ${houses.error}`);
     }
-
-    // Get the ascendant
+    
+    // Now TypeScript knows houses has ascendant property
     const ascendant = houses.ascendant;
     
     // In Whole Sign system, houses start at 0° of the sign containing the ascendant

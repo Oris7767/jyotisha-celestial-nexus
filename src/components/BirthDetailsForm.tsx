@@ -17,13 +17,15 @@ const formSchema = z.object({
   timezone: z.string().min(1, { message: "Timezone is required" }),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface BirthDetailsFormProps {
   onSubmit: (data: BirthDetails) => void;
   isLoading?: boolean;
 }
 
 const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading = false }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: "",
@@ -34,7 +36,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
     },
   });
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = (values: FormValues) => {
     onSubmit(values as BirthDetails);
   };
 

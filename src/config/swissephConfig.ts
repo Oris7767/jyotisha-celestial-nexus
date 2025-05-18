@@ -38,7 +38,10 @@ const EPHE_PATH = determineEphePath();
 // Initialize Swiss Ephemeris with the ephemeris path
 try {
   swisseph.swe_set_ephe_path(EPHE_PATH);
-  console.log('Swiss Ephemeris initialized successfully');
+  
+  // Set Ayanamsa to Lahiri (Indian/Hindu ayanamsa)
+  swisseph.swe_set_sid_mode(swisseph.SIDM_LAHIRI, 0, 0);
+  console.log('Swiss Ephemeris initialized successfully with Lahiri Ayanamsa');
 } catch (error) {
   console.error('Error initializing Swiss Ephemeris:', error);
 }
@@ -101,14 +104,14 @@ export const HOUSE_SYSTEMS = {
   SRIPATI: 'S'
 };
 
-// Default house system
+// Default house system (changed to Whole Sign as per Vedic tradition)
 export const DEFAULT_HOUSE_SYSTEM = HOUSE_SYSTEMS.WHOLE_SIGN;
 
 // Ayanamsa types
 export const AYANAMSA_TYPES = {
-  LAHIRI: swisseph.SE_SIDM_LAHIRI,
-  RAMAN: swisseph.SE_SIDM_RAMAN,
-  KRISHNAMURTI: swisseph.SE_SIDM_KRISHNAMURTI
+  LAHIRI: swisseph.SIDM_LAHIRI,
+  RAMAN: swisseph.SIDM_RAMAN,
+  KRISHNAMURTI: swisseph.SIDM_KRISHNAMURTI
 };
 
 // Default ayanamsa

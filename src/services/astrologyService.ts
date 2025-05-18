@@ -111,132 +111,84 @@ const findHouseWholeSign = (longitude: number, ascendantSign: number): number =>
 };
 
 /**
- * Calculate planetary positions
  */
-const calculatePlanetaryPositions = (julianDay: number, birthDetails: BirthDetails): PlanetaryPositions[] => {
+export const calculatePlanetaryPositions = (
+  julianDay: number,
+  birthDetails: BirthDetails
+): PlanetaryPositions[] => {
   const planets: PlanetaryPositions[] = [];
 
-  // Always set the sidereal mode first - IMPORTANT for Vedic calculations
+  // Set sidereal mode - essential for Vedic astrology
   swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
 
-  // Get ascendant to determine house positions in Whole Sign system
+  // Get ascendant and house cusps
   const { ascendant, houseCusps } = calculateHousesWholeSign(
-    julianDay, 
-    birthDetails.latitude, 
+    julianDay,
+    birthDetails.latitude,
     birthDetails.longitude
   );
-
   const ascendantSign = Math.floor(ascendant / 30);
 
-  // Calculate for each planet
   for (const [planetName, planetId] of Object.entries(PLANETS)) {
     try {
-      let flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
-      let longitude: number = 0;
-      let latitude: number = 0;
-      let distance: number = 0;
-      let longitudeSpeed: number = 0;
-      let latitudeSpeed: number = 0;
-      let distanceSpeed: number = 0;
-      let status: number = 0;
+      const flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
+      let result;
+      let longitude = 0;
+      let latitude = 0;
+      let speedLon = 0;
 
-      // Special calculation for Ketu (South Node)
       if (planetName === 'KETU') {
-        // Get Rahu position first
-        const calcResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
-        
-        // Make sure calcResult is an array with at least 2 elements
-        if (Array.isArray(calcResult) && calcResult.length >= 2) {
-          const xx = calcResult[0];
-          const ret = calcResult[1];
-          
-          // Ensure xx is an array with the expected properties
-          if (Array.isArray(xx) && xx.length >= 6) {
-            // Ketu is 180° opposite to Rahu
-            longitude = normalizeAngle(xx[0] + 180);
-            latitude = -xx[1]; // Opposite latitude
-            distance = xx[2];
-            longitudeSpeed = -xx[3]; // Opposite speed
-            latitudeSpeed = -xx[4];
-            distanceSpeed = xx[5];
-            status = ret;
-          } else {
-            console.error(`Invalid xx format for ${planetName}`);
-            continue;
-          }
-        } else {
-          console.error(`Invalid calcResult format for ${planetName}`);
+        // Ketu = 180° opposite of Rahu
+        result = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
+        if (!Array.isArray(result) || result.length < 2 || !Array.isArray(result[0])) {
+          console.error(`Invalid result calculating Rahu for Ketu`);
           continue;
         }
+        const [xx, ret] = result;
+        if (ret < 0 || xx.length < 6) {
+          console.error(`Calculation error or incomplete data for Ketu`);
+          continue;
+        }
+        longitude = normalizeAngle(xx[0] + 180);
+        latitude = -xx[1];
+        speedLon = -xx[3];
       } else {
-        // For all other planets
-        const calcResult = swisseph.swe_calc_ut(julianDay, planetId, flag);
-        
-        // Make sure calcResult is an array with at least 2 elements
-        if (Array.isArray(calcResult) && calcResult.length >= 2) {
-          const xx = calcResult[0];
-          const ret = calcResult[1];
-          
-          // Ensure xx is an array with the expected properties
-          if (Array.isArray(xx) && xx.length >= 6) {
-            longitude = xx[0];
-            latitude = xx[1];
-            distance = xx[2];
-            longitudeSpeed = xx[3];
-            latitudeSpeed = xx[4];
-            distanceSpeed = xx[5];
-            status = ret;
-          } else {
-            console.error(`Invalid xx format for ${planetName}`);
-            continue;
-          }
-        } else {
-          console.error(`Invalid calcResult format for ${planetName}`);
+        result = swisseph.swe_calc_ut(julianDay, planetId, flag);
+        if (!Array.isArray(result) || result.length < 2 || !Array.isArray(result[0])) {
+          console.error(`Invalid result for ${planetName}`);
           continue;
         }
+        const [xx, ret] = result;
+        if (ret < 0 || xx.length < 6) {
+          console.error(`Calculation error or incomplete data for ${planetName}`);
+          continue;
+        }
+        longitude = normalizeAngle(xx[0]);
+        latitude = xx[1];
+        speedLon = xx[3];
       }
 
-      
-      if (status < 0) {
-        console.error(`Error calculating ${planetName}:`, status);
-        continue;
-      }
-      
-      // Normalize the longitude to ensure it's between 0 and 360
-      const siderealLongitude = normalizeAngle(longitude);
-      
-      // Determine zodiac sign
-      const signIndex = Math.floor(siderealLongitude / 30);
-      const sign = ZODIAC_SIGNS[signIndex];
-      
-      // Determine nakshatra (27 nakshatras of 13°20' each)
-      const nakshatraIndex = Math.floor(siderealLongitude / (360/27)) % 27;
-      const nakshatra = NAKSHATRAS[nakshatraIndex];
-      
-      // Determine house (Whole Sign system)
-      const house = findHouseWholeSign(siderealLongitude, ascendantSign);
-      
-      // Detect retrograde motion
-      const retrograde = longitudeSpeed < 0;
-      
+      const signIndex = Math.floor(longitude / 30);
+      const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
+
       planets.push({
         planet: planetName,
-        longitude: siderealLongitude,
-        latitude: latitude,
-        house,
-        sign,
-        nakshatra,
-        retrograde
+        longitude,
+        latitude,
+        sign: ZODIAC_SIGNS[signIndex],
+        nakshatra: NAKSHATRAS[nakshatraIndex],
+        house: findHouseWholeSign(longitude, ascendantSign),
+        retrograde: speedLon < 0,
       });
     } catch (error) {
-      console.error(`Error calculating position for ${planetName}:`, error);
-      // Skip this planet and continue with others
+      console.error(`Exception while calculating ${planetName}:`, error);
+      continue;
     }
   }
-    
 
-     return planets;
-  };
+  return planets;
+};
+  ;
   //Calculate Vimshottari Dasha periods 
 const calculateDashas = (julianDay: number, moonLongitude: number): any => {
   try {

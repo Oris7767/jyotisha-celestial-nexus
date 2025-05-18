@@ -1,5 +1,5 @@
 
-export interface PlanetaryPosition {
+export interface PlanetaryPositions {
   planet: string;
   longitude: number;
   latitude?: number;
@@ -33,7 +33,7 @@ export interface Dasha {
 
 export interface ChartData {
   ascendant: Ascendant;
-  planets: PlanetaryPosition[];
+  planets: PlanetaryPositions[];
   houses: HousePosition[];
   dashas?: Dasha;
 }

@@ -9,7 +9,7 @@ import swisseph, {
   DEFAULT_AYANAMSA,
   GREGORIAN_CALENDAR
 } from '../config/swissephConfig.js';
-import { BirthDetails, ChartData, PlanetaryPosition } from '../types/astrology.js';
+import { BirthDetails, ChartData, PlanetaryPositions } from '../types/astrology.js';
 
 /**
  * Normalize angle to range [0, 360)
@@ -113,8 +113,8 @@ const findHouseWholeSign = (longitude: number, ascendantSign: number): number =>
 /**
  * Calculate planetary positions
  */
-const calculatePlanetaryPositions = (julianDay: number, birthDetails: BirthDetails): PlanetaryPosition[] => {
-  const planets: PlanetaryPosition[] = [];
+const calculatePlanetaryPositions = (julianDay: number, birthDetails: BirthDetails): PlanetaryPositions[] => {
+  const planets: PlanetaryPositions[] = [];
 
   // Always set the sidereal mode first - IMPORTANT for Vedic calculations
   swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);

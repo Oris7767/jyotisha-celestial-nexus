@@ -12,8 +12,10 @@
     "postinstall": "node build.js"
   },
   "dependencies": {
+    "@radix-ui/react-switch": "^1.2.4",
     "@types/express": "^4.17.21",
     "@types/react": "^19.1.4",
+    "@vitejs/plugin-react-swc": "^3.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -23,6 +25,7 @@
     "express": "^4.21.2",
     "lucide-react": "^0.462.0",
     "react": "^18.2.0",
+    "react-resizable-panels": "^3.0.2",
     "sonner": "^1.4.0",
     "sweph": "^2.10.3-4",
     "swisseph": "^0.5.17",

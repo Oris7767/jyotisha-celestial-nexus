@@ -31,7 +31,7 @@ const PlanetaryPositions: React.FC<PlanetaryPositionsProps> = ({ positions }) =>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {positions.map((position, index) => (
+            {positions.map((position: PlanetaryPosition, index: number) => (
               <TableRow key={index}>
                 <TableCell className="font-medium">{position.planet}</TableCell>
                 <TableCell>{position.sign}</TableCell>

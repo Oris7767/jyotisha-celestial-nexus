@@ -1,7 +1,7 @@
 
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn, FieldValues, SubmitHandler } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -24,6 +24,16 @@ interface BirthDetailsFormProps {
   isLoading?: boolean;
 }
 
+interface FieldProps {
+  field: {
+    value: any;
+    onChange: (value: any) => void;
+    onBlur: () => void;
+    name: string;
+    ref: React.Ref<any>;
+  }
+}
+
 const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading = false }) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -36,7 +46,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
     },
   });
 
-  const handleSubmit = (values: FormValues) => {
+  const handleSubmit: SubmitHandler<FormValues> = (values: FormValues) => {
     onSubmit(values as BirthDetails);
   };
 
@@ -51,7 +61,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
             <FormField
               control={form.control}
               name="date"
-              render={({ field }) => (
+              render={({ field }: FieldProps) => (
                 <FormItem>
                   <FormLabel>Birth Date</FormLabel>
                   <FormControl>
@@ -65,7 +75,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
             <FormField
               control={form.control}
               name="time"
-              render={({ field }) => (
+              render={({ field }: FieldProps) => (
                 <FormItem>
                   <FormLabel>Birth Time</FormLabel>
                   <FormControl>
@@ -80,7 +90,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
               <FormField
                 control={form.control}
                 name="latitude"
-                render={({ field }) => (
+                render={({ field }: FieldProps) => (
                   <FormItem>
                     <FormLabel>Latitude</FormLabel>
                     <FormControl>
@@ -94,7 +104,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
               <FormField
                 control={form.control}
                 name="longitude"
-                render={({ field }) => (
+                render={({ field }: FieldProps) => (
                   <FormItem>
                     <FormLabel>Longitude</FormLabel>
                     <FormControl>
@@ -109,7 +119,7 @@ const BirthDetailsForm: React.FC<BirthDetailsFormProps> = ({ onSubmit, isLoading
             <FormField
               control={form.control}
               name="timezone"
-              render={({ field }) => (
+              render={({ field }: FieldProps) => (
                 <FormItem>
                   <FormLabel>Timezone</FormLabel>
                   <FormControl>

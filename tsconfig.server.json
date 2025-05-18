@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": [
+      "ES2020"
+    ],
+    "module": "NodeNext",
+    "skipLibCheck": true,
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": false,
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": false,
+    "emitDeclarationOnly": false
+  },
+  "include": [
+    "src/index.ts",
+    "src/server.ts",
+    "src/services/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.tsx",
+    "node_modules",
+    "src/components/**/*",
+    "src/pages/**/*",
+    "src/hooks/**/*"
+  ]
+}

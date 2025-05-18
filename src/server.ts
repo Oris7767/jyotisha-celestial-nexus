@@ -1,14 +1,6 @@
-
 import express from 'express';
 import cors from 'cors';
-import { 
-  fetchChartData, 
-  fetchPlanetaryPositions, 
-  fetchAscendant, 
-  fetchDashas,
-  fetchHousePositions,
-  fetchNakshatraForPlanet
-} from './services/astrologyService.js';
+import { fetchChartData, fetchPlanetaryPositions, fetchAscendant, fetchDashas } from './services/astrologyService.js';
 import path from 'path';
 
 const app = express();
@@ -22,7 +14,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// API endpoint for full chart data
+// API endpoints
 app.post('/api/chart', async (req, res) => {
   try {
     const birthDetails = req.body;
@@ -34,7 +26,6 @@ app.post('/api/chart', async (req, res) => {
   }
 });
 
-// API endpoint for planetary positions
 app.post('/api/planets', async (req, res) => {
   try {
     const birthDetails = req.body;
@@ -46,19 +37,6 @@ app.post('/api/planets', async (req, res) => {
   }
 });
 
-// API endpoint for house positions
-app.post('/api/houses', async (req, res) => {
-  try {
-    const birthDetails = req.body;
-    const houses = await fetchHousePositions(birthDetails);
-    res.json(houses);
-  } catch (error: any) {
-    console.error('Error fetching houses:', error);
-    res.status(500).json({ error: 'Failed to fetch house positions', message: error?.message || 'Unknown error' });
-  }
-});
-
-// API endpoint for ascendant
 app.post('/api/ascendant', async (req, res) => {
   try {
     const birthDetails = req.body;
@@ -70,7 +48,6 @@ app.post('/api/ascendant', async (req, res) => {
   }
 });
 
-// API endpoint for dashas
 app.post('/api/dashas', async (req, res) => {
   try {
     const birthDetails = req.body;
@@ -79,41 +56,6 @@ app.post('/api/dashas', async (req, res) => {
   } catch (error: any) {
     console.error('Error fetching dashas:', error);
     res.status(500).json({ error: 'Failed to fetch dashas', message: error?.message || 'Unknown error' });
-  }
-});
-
-// API endpoint for nakshatra of a specific planet
-app.post('/api/nakshatra', async (req, res) => {
-  try {
-    const birthDetails = req.body;
-    const planetName = req.query.planet as string;
-    
-    if (!planetName) {
-      return res.status(400).json({ error: 'Missing planet parameter', message: 'Please specify a planet name as a query parameter' });
-    }
-    
-    const nakshatra = await fetchNakshatraForPlanet(birthDetails, planetName);
-    
-    if (!nakshatra) {
-      return res.status(404).json({ error: 'Planet not found', message: `Could not find nakshatra for planet ${planetName}` });
-    }
-    
-    res.json(nakshatra);
-  } catch (error: any) {
-    console.error('Error fetching nakshatra:', error);
-    res.status(500).json({ error: 'Failed to fetch nakshatra', message: error?.message || 'Unknown error' });
-  }
-});
-
-// API endpoint for full chart data (alias)
-app.post('/api/fullchart', async (req, res) => {
-  try {
-    const birthDetails = req.body;
-    const chartData = await fetchChartData(birthDetails);
-    res.json(chartData);
-  } catch (error: any) {
-    console.error('Error generating full chart:', error);
-    res.status(500).json({ error: 'Failed to generate full chart', message: error?.message || 'Unknown error' });
   }
 });
 
@@ -141,12 +83,9 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: [
       { route: '/api/chart', method: 'POST', description: 'Generate full astrological chart' },
-      { route: '/api/fullchart', method: 'POST', description: 'Alias for /api/chart' },
       { route: '/api/planets', method: 'POST', description: 'Get planetary positions' },
-      { route: '/api/houses', method: 'POST', description: 'Get house positions' },
       { route: '/api/ascendant', method: 'POST', description: 'Get ascendant information' },
       { route: '/api/dashas', method: 'POST', description: 'Get dasha periods' },
-      { route: '/api/nakshatra', method: 'POST', description: 'Get nakshatra for a specific planet (use ?planet=X query parameter)' },
       { route: '/health', method: 'GET', description: 'Health check endpoint' }
     ],
     documentation: 'For API usage instructions, see README.md'

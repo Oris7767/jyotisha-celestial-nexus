@@ -40,6 +40,7 @@ try {
   swisseph.swe_set_ephe_path(EPHE_PATH);
   
   // Set Ayanamsa to Lahiri (Indian/Hindu ayanamsa)
+  // Corrected: Changed SIDM_LAHIRI to SE_SIDM_LAHIRI
   swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
   console.log('Swiss Ephemeris initialized successfully with Lahiri Ayanamsa');
 } catch (error) {
@@ -107,7 +108,7 @@ export const HOUSE_SYSTEMS = {
 // Default house system (changed to Whole Sign as per Vedic tradition)
 export const DEFAULT_HOUSE_SYSTEM = HOUSE_SYSTEMS.WHOLE_SIGN;
 
-// Ayanamsa types
+// Ayanamsa types - Corrected to use SE_ prefix
 export const AYANAMSA_TYPES = {
   LAHIRI: swisseph.SE_SIDM_LAHIRI,
   RAMAN: swisseph.SE_SIDM_RAMAN,

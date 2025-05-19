@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartData, PlanetaryPosition } from "@/types/astrology";
+import { ChartData, PlanetaryPositions } from "@/types/astrology";
 
 interface AstrologyChartProps {
   chartData: ChartData | null;
@@ -53,7 +53,7 @@ const AstrologyChart: React.FC<AstrologyChartProps> = ({ chartData }) => {
               <text x="100" y="300" textAnchor="middle" fill="#666">4</text>
               
               {/* This would be replaced with actual planet positioning */}
-              {chartData.planets.slice(0, 5).map((planet: PlanetaryPosition, index: number) => (
+              {chartData.planets.slice(0, 5).map((planet: PlanetaryPositions, index: number) => (
                 <text 
                   key={index} 
                   x={100 + (index * 40)} 

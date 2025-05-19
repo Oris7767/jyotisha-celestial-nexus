@@ -158,27 +158,34 @@ export const calculatePlanetaryPositions = (
           const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
           console.log(`Rahu calculation result:`, rahuResult);
           
-          if (!rahuResult || !Array.isArray(rahuResult) || rahuResult.length < 2 || !rahuResult[0]) {
+          if (!rahuResult || !Array.isArray(rahuResult) || rahuResult.length < 2) {
             throw new Error("Invalid result from swe_calc_ut for Rahu");
           }
           
-          // Extract coordinates from the result
+          // Extract coordinates from the result - safely access properties
           const xx = rahuResult[0];
           const retFlag = rahuResult[1];
+          
+          if (!xx || typeof xx !== 'object' || !Array.isArray(xx)) {
+            throw new Error("Invalid coordinates array for Rahu");
+          }
           
           if (retFlag < 0) {
             throw new Error(`Swiss Ephemeris error code: ${retFlag}`);
           }
           
           // Calculate Ketu from Rahu (opposite point)
-          longitude = normalizeAngle(xx[0] + 180);
-          latitude = -xx[1];
-          speedLon = -xx[3];
+          longitude = normalizeAngle((xx[0] || 0) + 180);
+          latitude = -(xx[1] || 0);
+          speedLon = -(xx[3] || 0);
           
           console.log(`Calculated Ketu position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
         } catch (error) {
           console.error(`Error calculating Ketu:`, error);
-          continue;
+          // Add a fallback/placeholder for Ketu when calculation fails
+          longitude = 0;
+          latitude = 0;
+          speedLon = 0;
         }
       } else {
         try {
@@ -187,46 +194,57 @@ export const calculatePlanetaryPositions = (
           
           console.log(`${planetName} calculation result:`, result);
           
-          // Validate result before accessing its properties
-          if (!result || !Array.isArray(result) || result.length < 2 || !result[0]) {
+          // Validate result with more detailed checks
+          if (!result || !Array.isArray(result) || result.length < 2) {
             throw new Error(`Invalid result from swe_calc_ut for ${planetName}`);
           }
           
-          // Extract coordinates from the result
+          // Extract coordinates from the result with safe checks
           const xx = result[0];
           const retFlag = result[1];
+          
+          if (!xx || !Array.isArray(xx)) {
+            throw new Error(`Invalid coordinates array for ${planetName}`);
+          }
           
           if (retFlag < 0) {
             throw new Error(`Swiss Ephemeris error code for ${planetName}: ${retFlag}`);
           }
           
-          longitude = normalizeAngle(xx[0]);
-          latitude = xx[1];
-          speedLon = xx[3];
+          // Access array elements safely
+          longitude = normalizeAngle(xx[0] || 0);
+          latitude = xx[1] || 0;
+          speedLon = xx[3] || 0;
           
           console.log(`Calculated ${planetName} position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
         } catch (error) {
           console.error(`Error calculating ${planetName}:`, error);
-          continue;
+          // Add fallback values for the planet when calculation fails
+          longitude = 0;
+          latitude = 0;
+          speedLon = 0;
         }
       }
 
-      // Calculate zodiac sign and nakshatra
-      const signIndex = Math.floor(longitude / 30);
-      const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
+      // Only add the planet to the results if we have valid data
+      if (longitude !== undefined && !isNaN(longitude)) {
+        // Calculate zodiac sign and nakshatra
+        const signIndex = Math.floor(longitude / 30);
+        const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
 
-      planets.push({
-        planet: planetName,
-        longitude,
-        latitude,
-        sign: ZODIAC_SIGNS[signIndex],
-        nakshatra: NAKSHATRAS[nakshatraIndex],
-        house: findHouseWholeSign(longitude, ascendantSign),
-        retrograde: speedLon < 0,
-      });
+        planets.push({
+          planet: planetName,
+          longitude,
+          latitude,
+          sign: ZODIAC_SIGNS[signIndex] || "Unknown",
+          nakshatra: NAKSHATRAS[nakshatraIndex] || "Unknown",
+          house: findHouseWholeSign(longitude, ascendantSign),
+          retrograde: speedLon < 0,
+        });
+      }
     } catch (error) {
       console.error(`Exception while calculating ${planetName}:`, error);
-      continue;
+      // Skip adding this planet to the output when complete failure
     }
   }
 
@@ -386,7 +404,15 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
 export const fetchPlanetaryPositions = async (birthDetails: BirthDetails) => {
   try {
     const julianDay = getJulianDay(birthDetails);
-    return calculatePlanetaryPositions(julianDay, birthDetails);
+    const positions = calculatePlanetaryPositions(julianDay, birthDetails);
+    
+    // Return empty array if no positions were calculated
+    if (!positions || positions.length === 0) {
+      console.warn("No planetary positions calculated, returning empty array");
+      return [];
+    }
+    
+    return positions;
   } catch (error: any) {
     console.error('Error fetching planetary positions:', error);
     throw new Error(`Failed to fetch planetary positions: ${error?.message || 'Unknown error'}`);

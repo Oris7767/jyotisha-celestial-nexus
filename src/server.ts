@@ -1,5 +1,4 @@
-
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { 
   fetchChartData, 
@@ -24,31 +23,26 @@ app.use(cors({
 // Configure JSON body parser with more robust error handling
 app.use(express.json({ 
   limit: '1mb',
-  verify: (req, res, buf) => {
-    try {
-      JSON.parse(buf);
-    } catch (e) {
-      res.status(400).json({ 
-        error: 'Invalid JSON', 
-        message: 'The request body is not valid JSON. Please check your request format.',
-        details: e.message
-      });
-      throw new Error('Invalid JSON');
+  reviver: (key, value) => {
+    // Special handling for numeric values
+    if (key === 'latitude' || key === 'longitude') {
+      return typeof value === 'string' ? parseFloat(value) : value;
     }
+    return value;
   }
 }));
 
 // Request logging middleware
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.method === 'POST' && req.path.startsWith('/api/')) {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+    console.log('Request Body:', req.body);
   }
   next();
 });
 
 // API endpoints
-app.post('/api/chart', async (req, res) => {
+app.post('/api/chart', async (req: Request, res: Response) => {
   try {
     const birthDetails = req.body;
     
@@ -64,7 +58,7 @@ app.post('/api/chart', async (req, res) => {
     console.log("Received request for chart:", birthDetails);
     const chartData = await fetchChartData(birthDetails);
     res.json(chartData);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating chart:', error);
     res.status(500).json({ 
       error: 'Failed to generate chart', 
@@ -269,7 +263,7 @@ app.get('/', (req, res) => {
 });
 
 // Custom error handler for JSON parsing errors
-app.use((err, req, res, next) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ 
       error: 'Invalid JSON', 

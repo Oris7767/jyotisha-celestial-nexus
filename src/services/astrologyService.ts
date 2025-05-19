@@ -158,8 +158,8 @@ export const calculatePlanetaryPositions = (
           const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
           console.log(`Rahu calculation result:`, rahuResult);
           
-          if (!rahuResult) {
-            throw new Error("Null result from swe_calc_ut for Rahu");
+          if (!rahuResult || !Array.isArray(rahuResult) || rahuResult.length < 2 || !rahuResult[0]) {
+            throw new Error("Invalid result from swe_calc_ut for Rahu");
           }
           
           // Extract coordinates from the result
@@ -185,11 +185,12 @@ export const calculatePlanetaryPositions = (
           // Calculate planet position
           const result = swisseph.swe_calc_ut(julianDay, planetId, flag);
           
-          if (!result) {
-            throw new Error(`Null result from swe_calc_ut for ${planetName}`);
-          }
-          
           console.log(`${planetName} calculation result:`, result);
+          
+          // Validate result before accessing its properties
+          if (!result || !Array.isArray(result) || result.length < 2 || !result[0]) {
+            throw new Error(`Invalid result from swe_calc_ut for ${planetName}`);
+          }
           
           // Extract coordinates from the result
           const xx = result[0];

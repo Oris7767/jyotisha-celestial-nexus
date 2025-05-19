@@ -2,10 +2,10 @@
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlanetaryPosition } from "@/types/astrology";
+import { PlanetaryPositions } from "@/types/astrology";
 
 interface PlanetaryPositionsProps {
-  positions: PlanetaryPosition[];
+  positions: PlanetaryPositions[];
 }
 
 const PlanetaryPositions: React.FC<PlanetaryPositionsProps> = ({ positions }) => {
@@ -31,7 +31,7 @@ const PlanetaryPositions: React.FC<PlanetaryPositionsProps> = ({ positions }) =>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {positions.map((position: PlanetaryPosition, index: number) => (
+            {positions.map((position: PlanetaryPositions, index: number) => (
               <TableRow key={index}>
                 <TableCell className="font-medium">{position.planet}</TableCell>
                 <TableCell>{position.sign}</TableCell>

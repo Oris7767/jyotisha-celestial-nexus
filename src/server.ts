@@ -20,66 +20,156 @@ app.use(cors({
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+
+// Configure JSON body parser with more robust error handling
+app.use(express.json({ 
+  limit: '1mb',
+  verify: (req, res, buf) => {
+    try {
+      JSON.parse(buf);
+    } catch (e) {
+      res.status(400).json({ 
+        error: 'Invalid JSON', 
+        message: 'The request body is not valid JSON. Please check your request format.',
+        details: e.message
+      });
+      throw new Error('Invalid JSON');
+    }
+  }
+}));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.path.startsWith('/api/')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
 
 // API endpoints
 app.post('/api/chart', async (req, res) => {
   try {
     const birthDetails = req.body;
+    
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     console.log("Received request for chart:", birthDetails);
     const chartData = await fetchChartData(birthDetails);
     res.json(chartData);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error generating chart:', error);
-    res.status(500).json({ error: 'Failed to generate chart', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to generate chart', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
 app.post('/api/planets', async (req, res) => {
   try {
     const birthDetails = req.body;
+    
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     console.log("Received request for planets:", birthDetails);
     const planets = await fetchPlanetaryPositions(birthDetails);
     res.json(planets);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching planets:', error);
-    res.status(500).json({ error: 'Failed to fetch planetary positions', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to fetch planetary positions', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
 app.post('/api/ascendant', async (req, res) => {
   try {
     const birthDetails = req.body;
+    
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     console.log("Received request for ascendant:", birthDetails);
     const ascendant = await fetchAscendant(birthDetails);
     res.json(ascendant);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching ascendant:', error);
-    res.status(500).json({ error: 'Failed to fetch ascendant', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to fetch ascendant', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
 app.post('/api/houses', async (req, res) => {
   try {
     const birthDetails = req.body;
+    
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     console.log("Received request for houses:", birthDetails);
     const houses = await fetchHouses(birthDetails);
     res.json(houses);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching houses:', error);
-    res.status(500).json({ error: 'Failed to fetch houses', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to fetch houses', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
 app.post('/api/dashas', async (req, res) => {
   try {
     const birthDetails = req.body;
+    
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     console.log("Received request for dashas:", birthDetails);
     const dashas = await fetchDashas(birthDetails);
     res.json(dashas);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching dashas:', error);
-    res.status(500).json({ error: 'Failed to fetch dashas', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to fetch dashas', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
@@ -88,28 +178,56 @@ app.post('/api/nakshatra', async (req, res) => {
     const birthDetails = req.body;
     const planet = req.query.planet as string;
     
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     if (!planet) {
-      return res.status(400).json({ error: 'Missing planet parameter in query' });
+      return res.status(400).json({ 
+        error: 'Missing planet parameter', 
+        message: 'Required query parameter: planet' 
+      });
     }
     
     console.log(`Received request for nakshatra of ${planet}:`, birthDetails);
     const nakshatra = await fetchNakshatra(birthDetails, planet);
     res.json(nakshatra);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching nakshatra:', error);
-    res.status(500).json({ error: 'Failed to fetch nakshatra', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to fetch nakshatra', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
 app.post('/api/fullchart', async (req, res) => {
   try {
     const birthDetails = req.body;
+    
+    // Validate required fields
+    if (!birthDetails || !birthDetails.date || !birthDetails.time || 
+        birthDetails.latitude === undefined || birthDetails.longitude === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Required fields: date, time, latitude, longitude' 
+      });
+    }
+    
     console.log("Received request for full chart:", birthDetails);
     const chartData = await fetchChartData(birthDetails);
     res.json(chartData);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error generating full chart:', error);
-    res.status(500).json({ error: 'Failed to generate full chart', message: error?.message || 'Unknown error' });
+    res.status(500).json({ 
+      error: 'Failed to generate full chart', 
+      message: error?.message || 'Unknown error' 
+    });
   }
 });
 
@@ -126,7 +244,8 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     message: 'Vedic Astrology API is running',
     environment: process.env.NODE_ENV,
-    ephemerisPath: ephePath
+    ephemerisPath: ephePath,
+    version: '1.1.0' // Updated version
   });
 });
 
@@ -134,7 +253,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.status(200).json({
     service: 'Vedic Astrology API',
-    version: '1.0.0',
+    version: '1.1.0',
     endpoints: [
       { route: '/api/chart', method: 'POST', description: 'Generate basic astrological chart' },
       { route: '/api/fullchart', method: 'POST', description: 'Generate complete astrological chart' },
@@ -147,6 +266,18 @@ app.get('/', (req, res) => {
     ],
     documentation: 'For API usage instructions, see README.md'
   });
+});
+
+// Custom error handler for JSON parsing errors
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ 
+      error: 'Invalid JSON', 
+      message: 'The request body is not valid JSON. Please check your request format.',
+      details: err.message
+    });
+  }
+  next(err);
 });
 
 export default app;

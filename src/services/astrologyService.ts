@@ -10,6 +10,8 @@ import swisseph, {
   GREGORIAN_CALENDAR
 } from '../config/swissephConfig.js';
 import { BirthDetails, ChartData, PlanetaryPositions } from '../types/astrology.js';
+import path from 'path';
+import fs from 'fs';
 
 /**
  * Normalize angle to range [0, 360)
@@ -22,23 +24,28 @@ const normalizeAngle = (angle: number): number => {
  * Convert date and time to Julian day
  */
 const getJulianDay = (birthDetails: BirthDetails): number => {
-  const { date, time, timezone } = birthDetails;
+  try {
+    const { date, time, timezone } = birthDetails;
 
-  // Parse date and time
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
+    // Parse date and time
+    const [year, month, day] = date.split('-').map(Number);
+    const [hour, minute] = time.split(':').map(Number);
 
-  // Convert to Julian day (direct calculation without moment.js)
-  const julianDay = swisseph.swe_julday(
-    year, 
-    month, 
-    day, 
-    hour + minute / 60, 
-    GREGORIAN_CALENDAR
-  );
+    // Convert to Julian day (direct calculation without moment.js)
+    const julianDay = swisseph.swe_julday(
+      year, 
+      month, 
+      day, 
+      hour + minute / 60, 
+      GREGORIAN_CALENDAR
+    );
 
-  console.log(`Julian Day calculated: ${julianDay} for ${date} ${time}`);
-  return julianDay;
+    console.log(`Julian Day calculated: ${julianDay} for ${date} ${time}`);
+    return julianDay;
+  } catch (error) {
+    console.error("Error calculating Julian day:", error);
+    throw new Error(`Failed to calculate Julian day: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
 /**
@@ -49,26 +56,25 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
   houseCusps: number[];
 } => {
   try {
-    // Always set the sidereal mode first - IMPORTANT for Vedic calculations
+    // Set sidereal mode before calculation
     swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
 
     // Calculate houses using Swiss Ephemeris
-    const flag = swisseph.SEFLG_SIDEREAL; // Use sidereal zodiac
+    const flag = swisseph.SEFLG_SIDEREAL;
 
     // Use Whole Sign house system
     const houses = swisseph.swe_houses(
       julianDay,
       latitude,
       longitude,
-      'W' // Whole Sign house system
+      DEFAULT_HOUSE_SYSTEM
     );
 
     // Check if houses is null or an error object
-    if (!houses || 'error' in houses) {
-      throw new Error(`Failed to calculate houses: ${houses?.error || 'Unknown error'}`);
+    if (!houses || typeof houses !== 'object' || houses === null) {
+      throw new Error(`Failed to calculate houses: Houses object is null or invalid`);
     }
 
-    // Now access the ascendant property safely
     const ascendant = houses.ascendant;
 
     // In Whole Sign system, houses start at 0° of the sign containing the ascendant
@@ -111,12 +117,20 @@ const findHouseWholeSign = (longitude: number, ascendantSign: number): number =>
 };
 
 /**
+ * Calculate planetary positions
  */
 export const calculatePlanetaryPositions = (
   julianDay: number,
   birthDetails: BirthDetails
 ): PlanetaryPositions[] => {
   const planets: PlanetaryPositions[] = [];
+
+  // Check if ephemeris files exist
+  const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+  console.log(`Using ephemeris path for calculations: ${ephePath}`);
+  
+  // Make sure the ephemeris path is set properly
+  swisseph.swe_set_ephe_path(ephePath);
 
   // Set sidereal mode - essential for Vedic astrology
   swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
@@ -131,43 +145,72 @@ export const calculatePlanetaryPositions = (
 
   for (const [planetName, planetId] of Object.entries(PLANETS)) {
     try {
+      console.log(`Calculating position for ${planetName} (ID: ${planetId})`);
+      
       const flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
-      let result;
       let longitude = 0;
       let latitude = 0;
       let speedLon = 0;
 
       if (planetName === 'KETU') {
-        // Ketu = 180° opposite of Rahu
-        result = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
-        if (!Array.isArray(result) || result.length < 2 || !Array.isArray(result[0])) {
-          console.error(`Invalid result calculating Rahu for Ketu`);
+        // For Ketu, we need to calculate Rahu first and then add 180 degrees
+        try {
+          const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
+          console.log(`Rahu calculation result:`, rahuResult);
+          
+          if (!rahuResult) {
+            throw new Error("Null result from swe_calc_ut for Rahu");
+          }
+          
+          // Extract coordinates from the result
+          const xx = rahuResult[0];
+          const retFlag = rahuResult[1];
+          
+          if (retFlag < 0) {
+            throw new Error(`Swiss Ephemeris error code: ${retFlag}`);
+          }
+          
+          // Calculate Ketu from Rahu (opposite point)
+          longitude = normalizeAngle(xx[0] + 180);
+          latitude = -xx[1];
+          speedLon = -xx[3];
+          
+          console.log(`Calculated Ketu position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
+        } catch (error) {
+          console.error(`Error calculating Ketu:`, error);
           continue;
         }
-        const [xx, ret] = result;
-        if (ret < 0 || xx.length < 6) {
-          console.error(`Calculation error or incomplete data for Ketu`);
-          continue;
-        }
-        longitude = normalizeAngle(xx[0] + 180);
-        latitude = -xx[1];
-        speedLon = -xx[3];
       } else {
-        result = swisseph.swe_calc_ut(julianDay, planetId, flag);
-        if (!Array.isArray(result) || result.length < 2 || !Array.isArray(result[0])) {
-          console.error(`Invalid result for ${planetName}`);
+        try {
+          // Calculate planet position
+          const result = swisseph.swe_calc_ut(julianDay, planetId, flag);
+          
+          if (!result) {
+            throw new Error(`Null result from swe_calc_ut for ${planetName}`);
+          }
+          
+          console.log(`${planetName} calculation result:`, result);
+          
+          // Extract coordinates from the result
+          const xx = result[0];
+          const retFlag = result[1];
+          
+          if (retFlag < 0) {
+            throw new Error(`Swiss Ephemeris error code for ${planetName}: ${retFlag}`);
+          }
+          
+          longitude = normalizeAngle(xx[0]);
+          latitude = xx[1];
+          speedLon = xx[3];
+          
+          console.log(`Calculated ${planetName} position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
+        } catch (error) {
+          console.error(`Error calculating ${planetName}:`, error);
           continue;
         }
-        const [xx, ret] = result;
-        if (ret < 0 || xx.length < 6) {
-          console.error(`Calculation error or incomplete data for ${planetName}`);
-          continue;
-        }
-        longitude = normalizeAngle(xx[0]);
-        latitude = xx[1];
-        speedLon = xx[3];
       }
 
+      // Calculate zodiac sign and nakshatra
       const signIndex = Math.floor(longitude / 30);
       const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
 
@@ -188,8 +231,10 @@ export const calculatePlanetaryPositions = (
 
   return planets;
 };
-  ;
-  //Calculate Vimshottari Dasha periods 
+
+/**
+ * Calculate Vimshottari Dasha periods 
+ */
 const calculateDashas = (julianDay: number, moonLongitude: number): any => {
   try {
     // Normalize Moon's longitude to ensure it's between 0 and 360
@@ -229,7 +274,6 @@ const calculateDashas = (julianDay: number, moonLongitude: number): any => {
       const index = (lordIndex + i) % uniqueLords.length;
       dashaSequence.push(uniqueLords[index]);
     }
-    
     
     // Calculate end dates for each dasha
     const dashas = [];
@@ -275,6 +319,11 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
     
     // Calculate Julian day
     const julianDay = getJulianDay(birthDetails);
+
+    // Set ephemeris path
+    const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+    console.log(`Using ephemeris path: ${ephePath}`);
+    swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode first - IMPORTANT for Vedic calculations
     swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
@@ -350,6 +399,10 @@ export const fetchAscendant = async (birthDetails: BirthDetails) => {
   try {
     const julianDay = getJulianDay(birthDetails);
 
+    // Set ephemeris path
+    const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+    swisseph.swe_set_ephe_path(ephePath);
+
     // Always set the sidereal mode first
     swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
 
@@ -380,11 +433,50 @@ export const fetchAscendant = async (birthDetails: BirthDetails) => {
 };
 
 /**
+ * Fetch houses
+ */
+export const fetchHouses = async (birthDetails: BirthDetails) => {
+  try {
+    const julianDay = getJulianDay(birthDetails);
+    
+    // Set ephemeris path
+    const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+    swisseph.swe_set_ephe_path(ephePath);
+    
+    // Always set the sidereal mode first
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    
+    // Calculate houses
+    const { houseCusps } = calculateHousesWholeSign(
+      julianDay,
+      birthDetails.latitude,
+      birthDetails.longitude
+    );
+    
+    // Format houses data
+    return houseCusps.map((cusp, index) => {
+      return {
+        house: index + 1,
+        sign: ZODIAC_SIGNS[Math.floor(cusp / 30)],
+        degree: cusp % 30
+      };
+    });
+  } catch (error: any) {
+    console.error('Error fetching houses:', error);
+    throw new Error(`Failed to fetch houses: ${error?.message || 'Unknown error'}`);
+  }
+};
+
+/**
  * Fetch dashas
  */
 export const fetchDashas = async (birthDetails: BirthDetails) => {
   try {
     const julianDay = getJulianDay(birthDetails);
+
+    // Set ephemeris path
+    const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+    swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode
     swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
@@ -398,5 +490,37 @@ export const fetchDashas = async (birthDetails: BirthDetails) => {
   } catch (error: any) {
     console.error('Error fetching dashas:', error);
     throw new Error(`Failed to fetch dashas: ${error?.message || 'Unknown error'}`);
+  }
+};
+
+/**
+ * Fetch nakshatra for a specific planet
+ */
+export const fetchNakshatra = async (birthDetails: BirthDetails, planetName: string) => {
+  try {
+    const julianDay = getJulianDay(birthDetails);
+    
+    // Set ephemeris path
+    const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+    swisseph.swe_set_ephe_path(ephePath);
+    
+    // Set sidereal mode
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    
+    const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
+    const planet = planetaryPositions.find(p => p.planet === planetName.toUpperCase());
+    
+    if (!planet) {
+      throw new Error(`Planet ${planetName} not found`);
+    }
+    
+    return {
+      planet: planetName.toUpperCase(),
+      nakshatra: planet.nakshatra,
+      nakshatraLord: NAKSHATRA_LORDS[NAKSHATRAS.indexOf(planet.nakshatra || '')]
+    };
+  } catch (error: any) {
+    console.error(`Error fetching nakshatra for ${planetName}:`, error);
+    throw new Error(`Failed to fetch nakshatra: ${error?.message || 'Unknown error'}`);
   }
 };

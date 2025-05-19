@@ -1,4 +1,3 @@
-
 import swisseph, { 
   ZODIAC_SIGNS, 
   NAKSHATRAS, 
@@ -158,26 +157,20 @@ export const calculatePlanetaryPositions = (
           const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
           console.log(`Rahu calculation result:`, rahuResult);
           
-          if (!rahuResult || !Array.isArray(rahuResult) || rahuResult.length < 2) {
+          // Check if rahuResult is valid object with required properties
+          if (!rahuResult || typeof rahuResult !== 'object' || rahuResult.longitude === undefined) {
             throw new Error("Invalid result from swe_calc_ut for Rahu");
           }
           
-          // Extract coordinates from the result - safely access properties
-          const xx = rahuResult[0];
-          const retFlag = rahuResult[1];
-          
-          if (!xx || typeof xx !== 'object' || !Array.isArray(xx)) {
-            throw new Error("Invalid coordinates array for Rahu");
-          }
-          
-          if (retFlag < 0) {
-            throw new Error(`Swiss Ephemeris error code: ${retFlag}`);
+          // Check return flag
+          if (rahuResult.rflag < 0) {
+            throw new Error(`Swiss Ephemeris error code: ${rahuResult.rflag}`);
           }
           
           // Calculate Ketu from Rahu (opposite point)
-          longitude = normalizeAngle((xx[0] || 0) + 180);
-          latitude = -(xx[1] || 0);
-          speedLon = -(xx[3] || 0);
+          longitude = normalizeAngle(rahuResult.longitude + 180);
+          latitude = -rahuResult.latitude;
+          speedLon = -rahuResult.longitudeSpeed;
           
           console.log(`Calculated Ketu position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
         } catch (error) {
@@ -190,31 +183,24 @@ export const calculatePlanetaryPositions = (
       } else {
         try {
           // Calculate planet position
-          const result = swisseph.swe_calc_ut(julianDay, planetId, flag);
+          const res = swisseph.swe_calc_ut(julianDay, planetId, flag);
           
-          console.log(`${planetName} calculation result:`, result);
+          console.log(`${planetName} calculation result:`, res);
           
-          // Validate result with more detailed checks
-          if (!result || !Array.isArray(result) || result.length < 2) {
+          // Validate result structure for new swisseph version (object format)
+          if (!res || typeof res !== 'object' || typeof res.longitude !== 'number') {
             throw new Error(`Invalid result from swe_calc_ut for ${planetName}`);
           }
           
-          // Extract coordinates from the result with safe checks
-          const xx = result[0];
-          const retFlag = result[1];
-          
-          if (!xx || !Array.isArray(xx)) {
-            throw new Error(`Invalid coordinates array for ${planetName}`);
+          // Check return flag
+          if (res.rflag < 0) {
+            throw new Error(`Swiss Ephemeris error code for ${planetName}: ${res.rflag}`);
           }
           
-          if (retFlag < 0) {
-            throw new Error(`Swiss Ephemeris error code for ${planetName}: ${retFlag}`);
-          }
-          
-          // Access array elements safely
-          longitude = normalizeAngle(xx[0] || 0);
-          latitude = xx[1] || 0;
-          speedLon = xx[3] || 0;
+          // Access object properties directly
+          longitude = normalizeAngle(res.longitude);
+          latitude = res.latitude;
+          speedLon = res.longitudeSpeed;
           
           console.log(`Calculated ${planetName} position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
         } catch (error) {

@@ -35,37 +35,35 @@ const AstrologyChart: React.FC<AstrologyChartProps> = ({ chartData }) => {
           {/* This is just a placeholder. In a real app, you would render the actual chart with houses and planets */}
           <div className="absolute inset-0">
             {/* Simplified chart representation - would be replaced with actual chart rendering */}
-            <svg width="100%" height="100%" viewBox="0 0 400 400">
+            <div className="w-full h-full relative">
               {/* Center lines */}
-              <line x1="0" y1="200" x2="400" y2="200" stroke="#ddd" />
-              <line x1="200" y1="0" x2="200" y2="400" stroke="#ddd" />
+              <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-200"></div>
+              <div className="absolute bottom-0 top-0 left-1/2 w-px bg-gray-200"></div>
               
               {/* Four quadrants */}
-              <rect x="0" y="0" width="200" height="200" fill="transparent" stroke="#ddd" />
-              <rect x="200" y="0" width="200" height="200" fill="transparent" stroke="#ddd" />
-              <rect x="0" y="200" width="200" height="200" fill="transparent" stroke="#ddd" />
-              <rect x="200" y="200" width="200" height="200" fill="transparent" stroke="#ddd" />
+              <div className="absolute top-0 left-0 w-1/2 h-1/2 border-r border-b border-gray-200"></div>
+              <div className="absolute top-0 right-0 w-1/2 h-1/2 border-l border-b border-gray-200"></div>
+              <div className="absolute bottom-0 left-0 w-1/2 h-1/2 border-r border-t border-gray-200"></div>
+              <div className="absolute bottom-0 right-0 w-1/2 h-1/2 border-l border-t border-gray-200"></div>
               
-              {/* House numbers - simplified */}
-              <text x="100" y="100" textAnchor="middle" fill="#666">1</text>
-              <text x="300" y="100" textAnchor="middle" fill="#666">2</text>
-              <text x="300" y="300" textAnchor="middle" fill="#666">3</text>
-              <text x="100" y="300" textAnchor="middle" fill="#666">4</text>
+              {/* House numbers */}
+              <div className="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-gray-600">1</div>
+              <div className="absolute top-1/4 right-1/4 transform translate-x-1/2 -translate-y-1/2 text-gray-600">2</div>
+              <div className="absolute bottom-1/4 right-1/4 transform translate-x-1/2 translate-y-1/2 text-gray-600">3</div>
+              <div className="absolute bottom-1/4 left-1/4 transform -translate-x-1/2 translate-y-1/2 text-gray-600">4</div>
               
-              {/* This would be replaced with actual planet positioning */}
-              {chartData.planets.slice(0, 5).map((planet: PlanetaryPositions, index: number) => (
-                <text 
-                  key={index} 
-                  x={100 + (index * 40)} 
-                  y={50} 
-                  textAnchor="middle" 
-                  fill="blue"
-                  fontSize="12"
-                >
-                  {planet.planet.substring(0, 2)}
-                </text>
-              ))}
-            </svg>
+              {/* Planet positions - simplified representation */}
+              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                {chartData.planets.slice(0, 5).map((planet: PlanetaryPositions, index: number) => (
+                  <span 
+                    key={index}
+                    className="text-xs font-bold text-blue-600"
+                  >
+                    {planet.planet.substring(0, 2)}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
         

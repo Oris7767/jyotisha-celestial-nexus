@@ -143,98 +143,110 @@ export const calculatePlanetaryPositions = (
   const ascendantSign = Math.floor(ascendant / 30);
 
   for (const [planetName, planetId] of Object.entries(PLANETS)) {
-    try {
-      console.log(`Calculating position for ${planetName} (ID: ${planetId})`);
-      
-      const flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
-      let longitude = 0;
-      let latitude = 0;
-      let speedLon = 0;
+  try {
+    console.log(`Calculating position for ${planetName} (ID: ${planetId})`);
 
-      if (planetName === 'KETU') {
-        // For Ketu, we need to calculate Rahu first and then add 180 degrees
-        try {
-          const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag);
-          console.log(`Rahu calculation result:`, rahuResult);
-          
-          // Check if rahuResult is valid object with required properties
-          if (!rahuResult || typeof rahuResult !== 'object' || rahuResult.longitude === undefined) {
-            throw new Error("Invalid result from swe_calc_ut for Rahu");
-          }
-          
-          // Check return flag
-          if (rahuResult.rflag < 0) {
-            throw new Error(`Swiss Ephemeris error code: ${rahuResult.rflag}`);
-          }
-          
-          // Calculate Ketu from Rahu (opposite point)
-          longitude = normalizeAngle(rahuResult.longitude + 180);
-          latitude = -rahuResult.latitude;
-          speedLon = -rahuResult.longitudeSpeed;
-          
-          console.log(`Calculated Ketu position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
-        } catch (error) {
-          console.error(`Error calculating Ketu:`, error);
-          // Add a fallback/placeholder for Ketu when calculation fails
-          longitude = 0;
-          latitude = 0;
-          speedLon = 0;
+    const flag = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
+    let longitude = 0;
+    let latitude = 0;
+    let speedLon = 0;
+
+    if (planetName === 'KETU') {
+      // KETU: tính từ RAHU true node (đối xứng 180 độ)
+      try {
+        const rahuResult = swisseph.swe_calc_ut(julianDay, swisseph.SE_TRUE_NODE, flag);
+        console.log(`Rahu (True Node) calculation result:`, rahuResult);
+
+        if (!rahuResult || typeof rahuResult !== 'object' || rahuResult.longitude === undefined) {
+          throw new Error("Invalid result from swe_calc_ut for Rahu");
         }
-      } else {
-        try {
-          // Calculate planet position
-          const res = swisseph.swe_calc_ut(julianDay, planetId, flag);
-          
-          console.log(`${planetName} calculation result:`, res);
-          
-          // Validate result structure for new swisseph version (object format)
-          if (!res || typeof res !== 'object' || typeof res.longitude !== 'number') {
-            throw new Error(`Invalid result from swe_calc_ut for ${planetName}`);
-          }
-          
-          // Check return flag
-          if (res.rflag < 0) {
-            throw new Error(`Swiss Ephemeris error code for ${planetName}: ${res.rflag}`);
-          }
-          
-          // Access object properties directly
-          longitude = normalizeAngle(res.longitude);
-          latitude = res.latitude;
-          speedLon = res.longitudeSpeed;
-          
-          console.log(`Calculated ${planetName} position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
-        } catch (error) {
-          console.error(`Error calculating ${planetName}:`, error);
-          // Add fallback values for the planet when calculation fails
-          longitude = 0;
-          latitude = 0;
-          speedLon = 0;
+
+        if (rahuResult.rflag < 0) {
+          throw new Error(`Swiss Ephemeris error code: ${rahuResult.rflag}`);
         }
-      }
 
-      // Only add the planet to the results if we have valid data
-      if (longitude !== undefined && !isNaN(longitude)) {
-        // Calculate zodiac sign and nakshatra
-        const signIndex = Math.floor(longitude / 30);
-        const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
+        longitude = normalizeAngle(rahuResult.longitude + 180);
+        latitude = -rahuResult.latitude;
+        speedLon = -rahuResult.longitudeSpeed;
 
-        planets.push({
-          planet: planetName,
-          longitude,
-          latitude,
-          sign: ZODIAC_SIGNS[signIndex] || "Unknown",
-          nakshatra: NAKSHATRAS[nakshatraIndex] || "Unknown",
-          house: findHouseWholeSign(longitude, ascendantSign),
-          retrograde: speedLon < 0,
-        });
+        console.log(`Calculated Ketu position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
+      } catch (error) {
+        console.error(`Error calculating Ketu:`, error);
+        longitude = 0;
+        latitude = 0;
+        speedLon = 0;
       }
-    } catch (error) {
-      console.error(`Exception while calculating ${planetName}:`, error);
-      // Skip adding this planet to the output when complete failure
+    } else if (planetName === 'RAHU') {
+      try {
+        const res = swisseph.swe_calc_ut(julianDay, swisseph.SE_TRUE_NODE, flag);
+        console.log(`RAHU (True Node) calculation result:`, res);
+
+        if (!res || typeof res !== 'object' || typeof res.longitude !== 'number') {
+          throw new Error(`Invalid result from swe_calc_ut for Rahu`);
+        }
+
+        if (res.rflag < 0) {
+          throw new Error(`Swiss Ephemeris error code for Rahu: ${res.rflag}`);
+        }
+
+        longitude = normalizeAngle(res.longitude);
+        latitude = res.latitude;
+        speedLon = res.longitudeSpeed;
+
+        console.log(`Calculated Rahu position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
+      } catch (error) {
+        console.error(`Error calculating Rahu:`, error);
+        longitude = 0;
+        latitude = 0;
+        speedLon = 0;
+      }
+    } else {
+      try {
+        const res = swisseph.swe_calc_ut(julianDay, planetId, flag);
+
+        console.log(`${planetName} calculation result:`, res);
+
+        if (!res || typeof res !== 'object' || typeof res.longitude !== 'number') {
+          throw new Error(`Invalid result from swe_calc_ut for ${planetName}`);
+        }
+
+        if (res.rflag < 0) {
+          throw new Error(`Swiss Ephemeris error code for ${planetName}: ${res.rflag}`);
+        }
+
+        longitude = normalizeAngle(res.longitude);
+        latitude = res.latitude;
+        speedLon = res.longitudeSpeed;
+
+        console.log(`Calculated ${planetName} position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`);
+      } catch (error) {
+        console.error(`Error calculating ${planetName}:`, error);
+        longitude = 0;
+        latitude = 0;
+        speedLon = 0;
+      }
     }
-  }
 
-  return planets;
+    if (longitude !== undefined && !isNaN(longitude)) {
+      const signIndex = Math.floor(longitude / 30);
+      const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
+
+      planets.push({
+        planet: planetName,
+        longitude,
+        latitude,
+        sign: ZODIAC_SIGNS[signIndex] || "Unknown",
+        nakshatra: NAKSHATRAS[nakshatraIndex] || "Unknown",
+        house: findHouseWholeSign(longitude, ascendantSign),
+        retrograde: speedLon < 0,
+      });
+    }
+  } catch (error) {
+    console.error(`Exception while calculating ${planetName}:`, error);
+  }
+}
+
+return planets;
 };
 
 /**

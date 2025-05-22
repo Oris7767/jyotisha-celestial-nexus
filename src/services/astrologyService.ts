@@ -146,25 +146,22 @@ const findHouseWholeSign = (longitude: number, ascendantSign: number): number =>
 };
 
 /**
- * Calculate planetary positions
+* Calculate planetary positions with manual ayanamsa subtraction for nodes
  */
 export const calculatePlanetaryPositions = (
   julianDay: number,
   birthDetails: BirthDetails
 ): PlanetaryPositions[] => {
   const planets: PlanetaryPositions[] = [];
-
-  // Check if ephemeris files exist
   const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
-  console.log(`Using ephemeris path for calculations: ${ephePath}`);
-  
-  // Make sure the ephemeris path is set properly
+  console.log('Ephe path:', ephePath);
   swisseph.swe_set_ephe_path(ephePath);
 
-  // Set sidereal mode - essential for Vedic astrology
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+  // define flags
+  const planetFlags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
+  const nodeFlags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED; // tropical node
+  console.log('planetFlags:', planetFlags, 'nodeFlags:', nodeFlags);
 
-  // Get ascendant and house cusps
   const { ascendant, houseCusps } = calculateHousesWholeSign(
     julianDay,
     birthDetails.latitude,
@@ -173,86 +170,61 @@ export const calculatePlanetaryPositions = (
   const ascendantSign = Math.floor(ascendant / 30);
 
   for (const [planetName, planetId] of Object.entries(PLANETS)) {
-  try {
-    console.log(`Calculating position for ${planetName} (ID: ${planetId})`);
-
-    const flag =
-      swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED | swisseph.SEFLG_SIDEREAL;
     let longitude = 0;
     let latitude = 0;
     let speedLon = 0;
+    console.log('Calculating', planetName, 'with id', planetId);
 
-    if (planetName === 'RAHU' || planetName === 'KETU') {
-      try {
-        const rahuResult = swisseph.swe_calc_ut(
-          julianDay,
-          swisseph.SE_TRUE_NODE,
-          flag
-        );
+    try {
+      if (planetName === 'RAHU') {
+        const raw = swisseph.swe_calc_ut(julianDay, swisseph.SE_TRUE_NODE, nodeFlags);
+        console.log('RAHU raw:', raw);
+        if (!isPlanetCalcResult(raw)) throw new Error('Invalid RAHU');
         const ayanamsa = swisseph.swe_get_ayanamsa_ut(julianDay);
-
-        if (!isPlanetCalcResult(rahuResult)) {
-          throw new Error('Invalid result from swe_calc_ut for Rahu');
-        }
-
-        const rahuSidereal = normalizeAngle(rahuResult.longitude - ayanamsa);
-
-        if (planetName === 'RAHU') {
-          longitude = rahuSidereal;
-          latitude = rahuResult.latitude;
-          speedLon = rahuResult.longitudeSpeed;
-          console.log(
-            `Calculated Rahu (sidereal): lon=${longitude}, lat=${latitude}, speed=${speedLon}`
-          );
-        } else {
-          longitude = normalizeAngle(rahuSidereal + 180);
-          latitude = -rahuResult.latitude;
-          speedLon = -rahuResult.longitudeSpeed;
-          console.log(
-            `Calculated Ketu (sidereal): lon=${longitude}, lat=${latitude}, speed=${speedLon}`
-          );
-        }
-      } catch (error) {
-        console.error(`Error calculating ${planetName}:`, error);
-      }
-    } else {
-      try {
-        const res = swisseph.swe_calc_ut(julianDay, planetId, flag);
-
-        if (!isPlanetCalcResult(res)) {
-          throw new Error(`Invalid result from swe_calc_ut for ${planetName}`);
-        }
-
+        console.log('ayanamsa:', ayanamsa);
+        longitude = normalizeAngle(raw.longitude - ayanamsa);
+        latitude = raw.latitude;
+        speedLon = raw.longitudeSpeed;
+        console.log('RAHU sidereal:', longitude);
+      } else if (planetName === 'KETU') {
+        // using osculating apogee for Ketu
+        const raw = swisseph.swe_calc_ut(julianDay, swisseph.SE_OSCU_APOG, nodeFlags);
+        console.log('KETU raw (oscu_apog):', raw);
+        if (!isPlanetCalcResult(raw)) throw new Error('Invalid KETU');
+        const ayanamsa = swisseph.swe_get_ayanamsa_ut(julianDay);
+        longitude = normalizeAngle(raw.longitude - ayanamsa);
+        latitude = raw.latitude;
+        speedLon = raw.longitudeSpeed;
+        console.log('KETU sidereal:', longitude);
+      } else {
+        const res = swisseph.swe_calc_ut(julianDay, planetId, planetFlags);
+        console.log(`${planetName} raw:`, res);
+        if (!isPlanetCalcResult(res)) throw new Error(`${planetName} invalid`);
         longitude = normalizeAngle(res.longitude);
         latitude = res.latitude;
         speedLon = res.longitudeSpeed;
-
-        console.log(
-          `Calculated ${planetName} position: lon=${longitude}, lat=${latitude}, speed=${speedLon}`
-        );
-      } catch (error) {
-        console.error(`Error calculating ${planetName}:`, error);
+        console.log(`${planetName} sidereal:`, longitude);
       }
-    }
 
-    if (longitude !== undefined && !isNaN(longitude)) {
-      const signIndex = Math.floor(longitude / 30);
-      const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
-
-      planets.push({
-        planet: planetName,
-        longitude,
-        latitude,
-        sign: ZODIAC_SIGNS[signIndex] || 'Unknown',
-        nakshatra: NAKSHATRAS[nakshatraIndex] || 'Unknown',
-        house: findHouseWholeSign(longitude, ascendantSign),
-        retrograde: speedLon < 0,
-      });
+      if (!isNaN(longitude)) {
+        const signIndex = Math.floor(longitude / 30);
+        const nakshatraIndex = Math.floor(longitude / (360 / 27)) % 27;
+        planets.push({
+          planet: planetName,
+          longitude,
+          latitude,
+          sign: ZODIAC_SIGNS[signIndex] || 'Unknown',
+          nakshatra: NAKSHATRAS[nakshatraIndex] || 'Unknown',
+          house: findHouseWholeSign(longitude, ascendantSign),
+          retrograde: speedLon < 0,
+        });
+      }
+    } catch (e) {
+      console.error(`Error calculating ${planetName}:`, e);
     }
-  } catch (error) {
-    console.error(`Exception while calculating ${planetName}:`, error);
   }
-}
+  return planets;
+};
 
 
 };

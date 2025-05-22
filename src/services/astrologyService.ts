@@ -154,8 +154,8 @@ export const calculatePlanetaryPositions = (
     if (planetName === 'KETU') {
       // KETU: tính từ RAHU true node (đối xứng 180 độ)
       try {
-        const rahuResult = swisseph.swe_calc_ut(julianDay, swisseph.SE_TRUE_NODE, flag);
-        console.log(`Rahu (True Node) calculation result:`, rahuResult);
+        const rahuResult = swisseph.swe_calc_ut(julianDay, swisseph.SE_MEAN_NODE, flag);
+        console.log(`Rahu (Mean Node) calculation result:`, rahuResult);
 
         if (!rahuResult || typeof rahuResult !== 'object' || rahuResult.longitude === undefined) {
           throw new Error("Invalid result from swe_calc_ut for Rahu");
@@ -178,8 +178,8 @@ export const calculatePlanetaryPositions = (
       }
     } else if (planetName === 'RAHU') {
       try {
-        const res = swisseph.swe_calc_ut(julianDay, swisseph.SE_TRUE_NODE, flag);
-        console.log(`RAHU (True Node) calculation result:`, res);
+        const res = swisseph.swe_calc_ut(julianDay, swisseph.SE_MEAN_NODE, flag);
+        console.log(`RAHU (Mean Node) calculation result:`, res);
 
         if (!res || typeof res !== 'object' || typeof res.longitude !== 'number') {
           throw new Error(`Invalid result from swe_calc_ut for Rahu`);

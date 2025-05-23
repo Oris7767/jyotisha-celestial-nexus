@@ -253,7 +253,7 @@ export const calculatePlanetaryPositions = (
     console.error(`Exception while calculating ${planetName}:`, error);
   }
 }
-
+return planets;
 
 };
 

@@ -186,7 +186,7 @@ export const calculatePlanetaryPositions = (
       try {
         const rahuResult = swisseph.swe_calc_ut(
           julianDay,
-          swisseph.SE_TRUE_NODE,
+          swisseph.SE_MEAN_NODE,
           flag
         );
         const ayanamsa = swisseph.swe_get_ayanamsa_ut(julianDay);

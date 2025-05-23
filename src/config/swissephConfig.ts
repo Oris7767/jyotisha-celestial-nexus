@@ -71,8 +71,8 @@ export const PLANETS = {
   JUPITER: swisseph.SE_JUPITER,
   VENUS: swisseph.SE_VENUS,
   SATURN: swisseph.SE_SATURN,
-  RAHU: swisseph.SE_TRUE_NODE, // North Node
-  KETU: swisseph.SE_TRUE_NODE + 1, // Placeholder for South Node (calculated from Rahu)
+  RAHU: swisseph.SE_MEAN_NODE, // North Node
+  KETU: swisseph.SE_MEAN_NODE + 1, // Placeholder for South Node (calculated from Rahu)
 };
 
 // Dasha periods in years

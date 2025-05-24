@@ -21,25 +21,61 @@ const normalizeAngle = (angle: number): number => {
 
 /**
  * Convert date and time to Julian day
+ * This function converts local time to UTC first, then to Julian Day
  */
 const getJulianDay = (birthDetails: BirthDetails): number => {
   try {
-    const { date, time, timezone } = birthDetails;
+    const { date, time, timezone, longitude } = birthDetails;
 
     // Parse date and time
     const [year, month, day] = date.split('-').map(Number);
     const [hour, minute] = time.split(':').map(Number);
 
-    // Convert to Julian day (direct calculation without moment.js)
-    const julianDay = swisseph.swe_julday(
-      year, 
+    // First convert local time to UTC using timezone offset
+    let utcYear = 0, utcMonth = 0, utcDay = 0, utcHour = 0, utcMin = 0;
+    let utcSec = 0;
+
+    // Calculate timezone offset in hours based on longitude
+    // Positive longitude = East of Greenwich (positive timezone)
+    // Negative longitude = West of Greenwich (negative timezone) 
+    const timezoneOffset = longitude / 15;
+
+    swisseph.swe_utc_time_zone(
+      year,
       month, 
-      day, 
-      hour + minute / 60, 
-      GREGORIAN_CALENDAR
+      day,
+      hour,
+      minute,
+      0, // input local time
+      timezoneOffset, // timezone offset in hours
+      utcYear,
+      utcMonth,
+      utcDay, 
+      utcHour,
+      utcMin,
+      utcSec // output UTC time
     );
 
-    console.log(`Julian Day calculated: ${julianDay} for ${date} ${time}`);
+    // Now convert UTC to Julian Day
+    const dret: number[] = [0, 0]; // Array to store results
+    const gregflag = GREGORIAN_CALENDAR;
+
+    swisseph.swe_utc_to_jd(
+      utcYear,
+      utcMonth,
+      utcDay,
+      utcHour, 
+      utcMin,
+      utcSec,
+      gregflag,
+      dret,
+      null // error string
+    );
+
+    // dret[1] contains the Julian Day Number in Universal Time (UT)
+    const julianDay = dret[1];
+
+    console.log(`Julian Day calculated: ${julianDay} for ${date} ${time} (timezone offset: ${timezoneOffset}h)`);
     return julianDay;
   } catch (error) {
     console.error("Error calculating Julian day:", error);
@@ -48,15 +84,12 @@ const getJulianDay = (birthDetails: BirthDetails): number => {
 };
 
 /**
- * Calculate ascendant and house cusps using Whole Sign system
+ * Calculate ascendant position
  */
-const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude: number): {
-  ascendant: number;
-  houseCusps: number[];
-} => {
+const calculateAscendant = (julianDay: number, latitude: number, longitude: number): number => {
   try {
     // Set sidereal mode before calculation
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
 
     // Calculate houses using Swiss Ephemeris
     const flag = swisseph.SEFLG_SIDEREAL;
@@ -74,19 +107,29 @@ const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude
       throw new Error(`Failed to calculate houses: Houses object is null or invalid`);
     }
 
-    const ascendant = houses.ascendant;
+    return houses.ascendant;
+  } catch (error) {
+    console.error("Error calculating ascendant:", error);
+    return 0;
+  }
+};
 
-    // In Whole Sign system, houses start at 0° of the sign containing the ascendant
-    // and each house spans exactly 30°
-    const ascSign = Math.floor(ascendant / 30);
+/**
+ * Calculate house cusps using Whole Sign system
+ */
+const calculateHousesWholeSign = (julianDay: number, latitude: number, longitude: number): {
+  ascendant: number;
+  houseCusps: number[];
+} => {
+  try {
+    // Calculate ascendant first
+    const ascendant = calculateAscendant(julianDay, latitude, longitude);
 
-    // Generate whole sign house cusps (each house starts at 0° of a sign)
+    // In Whole Sign system, houses start at 0° of the sign
+    // Each house spans exactly 30°
     const houseCusps: number[] = [];
     for (let i = 0; i < 12; i++) {
-      // Calculate house cusp as 0° of the appropriate sign
-      // Ascendant's sign is the 1st house, then we go counterclockwise
-      const sign = (ascSign + i) % 12;
-      houseCusps.push(sign * 30);
+      houseCusps.push(i * 30);
     }
 
     return { ascendant, houseCusps };

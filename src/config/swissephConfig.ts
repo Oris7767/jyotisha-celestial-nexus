@@ -81,8 +81,8 @@ export const PLANETS = {
   JUPITER: swisseph.SE_JUPITER,
   VENUS: swisseph.SE_VENUS,
   SATURN: swisseph.SE_SATURN,
-  RAHU: swisseph.SE_TRUE_NODE,
-  KETU: swisseph.SE_TRUE_NODE // Ketu is calculated from Rahu
+  RAHU: swisseph.SE_TRUE_NODE,  // North Node
+  KETU: -1  // South Node (will be calculated as Rahu + 180°)
 };
 
 export type DashaPlanet = 'Ketu' | 'Venus' | 'Sun' | 'Moon' | 'Mars' | 'Rahu' | 'Jupiter' | 'Saturn' | 'Mercury';

@@ -15,7 +15,8 @@ export interface PlanetaryPositions {
   longitudeSpeed: number;
   sign: {
     name: string;
-    longitude: number; // 0-30 degrees within sign
+    longitude: number;
+    minutes: number;
   };
   nakshatra: NakshatraInfo;
   house: {

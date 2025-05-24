@@ -257,19 +257,31 @@ const calculatePlanetaryPositions = (
         let planetData: SwissEphResponse;
 
         if (planetName === 'KETU') {
+          // Get Rahu's position first
           const rahuResult = swisseph.swe_calc_ut(julianDay, PLANETS.RAHU, flag) as SwissEphResponse;
           if ('error' in rahuResult) {
             throw new Error(`Failed to calculate Rahu: ${rahuResult.error}`);
           }
           
+          // Calculate Ketu's position (opposite to Rahu)
+          const ketuLongitude = normalizeAngle(rahuResult.longitude + 180);
           planetData = {
-            longitude: normalizeAngle(rahuResult.longitude + 180),
+            longitude: ketuLongitude,
             latitude: -rahuResult.latitude,
             longitudeSpeed: -rahuResult.longitudeSpeed,
             distance: rahuResult.distance,
             latitudeSpeed: -rahuResult.latitudeSpeed,
             distanceSpeed: -rahuResult.distanceSpeed,
             rflag: rahuResult.rflag
+          };
+        } else if (planetName === 'RAHU') {
+          const result = swisseph.swe_calc_ut(julianDay, planetId, flag) as SwissEphResponse;
+          if ('error' in result) {
+            throw new Error(`Failed to calculate Rahu: ${result.error}`);
+          }
+          planetData = {
+            ...result,
+            longitude: normalizeAngle(result.longitude)
           };
         } else {
           const result = swisseph.swe_calc_ut(julianDay, planetId, flag) as SwissEphResponse;
@@ -280,8 +292,17 @@ const calculatePlanetaryPositions = (
         }
 
         const longitude = normalizeAngle(planetData.longitude);
-        const signIndex = Math.floor(longitude / 30);
-        const longitudeInSign = longitude % 30;
+        
+        // Convert longitude to degrees and minutes for more precise display
+        const degrees = Math.floor(longitude);
+        const minutes = Math.round((longitude - degrees) * 60);
+        
+        // Adjust if minutes = 60
+        const adjustedDegrees = minutes === 60 ? degrees + 1 : degrees;
+        const adjustedMinutes = minutes === 60 ? 0 : minutes;
+        
+        const signIndex = Math.floor(adjustedDegrees / 30);
+        const longitudeInSign = adjustedDegrees % 30;
         
         const houseNumber = findHouseWholeSign(longitude, ascendantSign);
         const nakshatraInfo = getNakshatraInfo(longitude);
@@ -293,7 +314,8 @@ const calculatePlanetaryPositions = (
           longitudeSpeed: planetData.longitudeSpeed,
           sign: {
             name: ZODIAC_SIGNS[signIndex],
-            longitude: longitudeInSign
+            longitude: longitudeInSign,
+            minutes: adjustedMinutes
           },
           nakshatra: nakshatraInfo,
           house: {
@@ -301,8 +323,8 @@ const calculatePlanetaryPositions = (
             sign: ZODIAC_SIGNS[(signIndex + houseNumber - 1) % 12]
           },
           isRetrograde: planetData.longitudeSpeed < 0,
-          aspectingPlanets: [], // Will be calculated later
-          aspects: [] // Will be calculated later
+          aspectingPlanets: [],
+          aspects: []
         };
 
         planets.push(planetInfo);

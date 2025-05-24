@@ -264,7 +264,7 @@ app.get('/', (req, res) => {
 
 // Custom error handler for JSON parsing errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+  if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
     return res.status(400).json({ 
       error: 'Invalid JSON', 
       message: 'The request body is not valid JSON. Please check your request format.',

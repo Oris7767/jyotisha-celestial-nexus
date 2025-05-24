@@ -85,8 +85,9 @@ export const PLANETS = {
   KETU: swisseph.SE_TRUE_NODE // Ketu is calculated from Rahu
 };
 
-// Dasha periods in years
-export const DASHA_PERIODS = {
+export type DashaPlanet = 'Ketu' | 'Venus' | 'Sun' | 'Moon' | 'Mars' | 'Rahu' | 'Jupiter' | 'Saturn' | 'Mercury';
+
+export const DASHA_PERIODS: Record<DashaPlanet, number> = {
   Ketu: 7,
   Venus: 20,
   Sun: 6,

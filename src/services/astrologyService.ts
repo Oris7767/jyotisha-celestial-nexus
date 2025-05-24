@@ -293,11 +293,12 @@ const calculatePlanetaryPositions = (
 
         const longitude = normalizeAngle(planetData.longitude);
         
-        // Convert longitude to degrees and minutes for more precise display
-        const degrees = Math.floor(longitude);
-        const minutes = Math.round((longitude - degrees) * 60);
+        // Convert longitude to degrees and minutes with proper handling of 60 minutes case
+        const totalMinutes = longitude * 60;
+        const degrees = Math.floor(totalMinutes / 60);
+        const minutes = Math.round(totalMinutes % 60);
         
-        // Adjust if minutes = 60
+        // Handle case where minutes round up to 60
         const adjustedDegrees = minutes === 60 ? degrees + 1 : degrees;
         const adjustedMinutes = minutes === 60 ? 0 : minutes;
         

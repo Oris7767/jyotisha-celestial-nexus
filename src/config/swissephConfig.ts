@@ -7,9 +7,9 @@ try {
   const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
   swisseph.swe_set_ephe_path(ephePath);
   
-  // Set Ayanamsa to Lahiri ICRC (Indian/Hindu ayanamsa)
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
-  console.log('Swiss Ephemeris initialized successfully with Lahiri ICRC Ayanamsa');
+  // Set Ayanamsa to Raman
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_RAMAN, 0, 0);
+  console.log('Swiss Ephemeris initialized successfully with Raman Ayanamsa');
 } catch (error) {
   console.error('Error initializing Swiss Ephemeris:', error);
   throw new Error('Failed to initialize Swiss Ephemeris');
@@ -24,7 +24,7 @@ export const AYANAMSA = {
 };
 
 // Set default ayanamsa
-export const DEFAULT_AYANAMSA = AYANAMSA.LAHIRI;
+export const DEFAULT_AYANAMSA = AYANAMSA.RAMAN;
 
 // Calendar type
 export const GREGORIAN_CALENDAR = swisseph.SE_GREG_CAL;
@@ -81,7 +81,7 @@ export const PLANETS = {
   JUPITER: swisseph.SE_JUPITER,
   VENUS: swisseph.SE_VENUS,
   SATURN: swisseph.SE_SATURN,
-  RAHU: swisseph.SE_TRUE_NODE,  // North Node
+  RAHU: swisseph.SE_MEAN_NODE,  // Changed from SE_TRUE_NODE to SE_MEAN_NODE
   KETU: -1  // South Node (will be calculated as Rahu + 180°)
 };
 

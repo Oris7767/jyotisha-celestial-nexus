@@ -8,7 +8,7 @@ try {
   swisseph.swe_set_ephe_path(ephePath);
   
   // Set Ayanamsa to Lahiri ICRC (Indian/Hindu ayanamsa)
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
   console.log('Swiss Ephemeris initialized successfully with Lahiri ICRC Ayanamsa');
 } catch (error) {
   console.error('Error initializing Swiss Ephemeris:', error);
@@ -18,13 +18,13 @@ try {
 // Define available ayanamsa options
 export const AYANAMSA = {
   FAGAN_BRADLEY: swisseph.SE_SIDM_FAGAN_BRADLEY,
-  LAHIRI_ICRC: swisseph.SE_SIDM_LAHIRI_ICRC,
+  LAHIRI: swisseph.SE_SIDM_LAHIRI,
   KRISHNAMURTI: swisseph.SE_SIDM_KRISHNAMURTI,
   RAMAN: swisseph.SE_SIDM_RAMAN
 };
 
 // Set default ayanamsa
-export const DEFAULT_AYANAMSA = AYANAMSA.LAHIRI_ICRC;
+export const DEFAULT_AYANAMSA = AYANAMSA.LAHIRI;
 
 // Calendar type
 export const GREGORIAN_CALENDAR = swisseph.SE_GREG_CAL;

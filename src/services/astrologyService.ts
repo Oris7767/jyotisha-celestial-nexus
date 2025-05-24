@@ -119,7 +119,7 @@ const getJulianDay = (birthDetails: BirthDetails): number => {
 const calculateAscendant = (julianDay: number, latitude: number, longitude: number): number => {
   try {
     // Set sidereal mode before calculation
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
 
     // Calculate houses using Swiss Ephemeris
     const flag = swisseph.SEFLG_SIDEREAL;
@@ -608,7 +608,7 @@ export const fetchAscendant = async (birthDetails: BirthDetails) => {
     swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode first
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
 
     // Calculate ascendant
     const { ascendant } = calculateHousesWholeSign(
@@ -648,7 +648,7 @@ export const fetchHouses = async (birthDetails: BirthDetails) => {
     swisseph.swe_set_ephe_path(ephePath);
     
     // Always set the sidereal mode first
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
     
     // Calculate houses
     const { houseCusps } = calculateHousesWholeSign(
@@ -683,7 +683,7 @@ export const fetchDashas = async (birthDetails: BirthDetails) => {
     swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
 
     const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
 
@@ -709,7 +709,7 @@ export const fetchNakshatra = async (birthDetails: BirthDetails, planetName: str
     swisseph.swe_set_ephe_path(ephePath);
     
     // Set sidereal mode
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
     
     const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
     const planet = planetaryPositions.find(p => p.planet === planetName.toUpperCase());

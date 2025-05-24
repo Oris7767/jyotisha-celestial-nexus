@@ -17,12 +17,17 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": false,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ]
   },
   "include": [
     "src/index.ts",
     "src/server.ts",
-    "src/services/**/*.ts"
+    "src/services/**/*.ts",
+    "src/types/**/*.ts"
   ],
   "exclude": [
     "src/**/*.tsx",

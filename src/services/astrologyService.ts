@@ -21,61 +21,45 @@ const normalizeAngle = (angle: number): number => {
 
 /**
  * Convert date and time to Julian day
- * This function converts local time to UTC first, then to Julian Day
+ * This function handles timezone conversion using native JavaScript Date
  */
 const getJulianDay = (birthDetails: BirthDetails): number => {
   try {
-    const { date, time, timezone, longitude } = birthDetails;
+    const { date, time, timezone } = birthDetails;
 
-    // Parse date and time
-    const [year, month, day] = date.split('-').map(Number);
-    const [hour, minute] = time.split(':').map(Number);
+    // Create a Date object in the specified timezone
+    const localDate = new Date(`${date}T${time}:00${timezone}`);
+    
+    // Convert to UTC
+    const utcYear = localDate.getUTCFullYear();
+    const utcMonth = localDate.getUTCMonth() + 1; // getUTCMonth() returns 0-11
+    const utcDay = localDate.getUTCDate();
+    const utcHour = localDate.getUTCHours();
+    const utcMin = localDate.getUTCMinutes();
+    const utcSec = localDate.getUTCSeconds();
 
-    // First convert local time to UTC using timezone offset
-    let utcYear = 0, utcMonth = 0, utcDay = 0, utcHour = 0, utcMin = 0;
-    let utcSec = 0;
-
-    // Calculate timezone offset in hours based on longitude
-    // Positive longitude = East of Greenwich (positive timezone)
-    // Negative longitude = West of Greenwich (negative timezone) 
-    const timezoneOffset = longitude / 15;
-
-    swisseph.swe_utc_time_zone(
-      year,
-      month, 
-      day,
-      hour,
-      minute,
-      0, // input local time
-      timezoneOffset, // timezone offset in hours
-      utcYear,
-      utcMonth,
-      utcDay, 
-      utcHour,
-      utcMin,
-      utcSec // output UTC time
-    );
-
-    // Now convert UTC to Julian Day
-    const dret: number[] = [0, 0]; // Array to store results
+    // Convert UTC to Julian Day
+    const dret: number[] = [0, 0];
     const gregflag = GREGORIAN_CALENDAR;
 
     swisseph.swe_utc_to_jd(
       utcYear,
       utcMonth,
       utcDay,
-      utcHour, 
+      utcHour,
       utcMin,
       utcSec,
       gregflag,
       dret,
-      null // error string
+      null
     );
 
     // dret[1] contains the Julian Day Number in Universal Time (UT)
     const julianDay = dret[1];
 
-    console.log(`Julian Day calculated: ${julianDay} for ${date} ${time} (timezone offset: ${timezoneOffset}h)`);
+    console.log(`Julian Day calculated: ${julianDay} for ${date} ${time} (timezone: ${timezone})`);
+    console.log(`UTC time used: ${utcYear}-${utcMonth}-${utcDay} ${utcHour}:${utcMin}:${utcSec}`);
+    
     return julianDay;
   } catch (error) {
     console.error("Error calculating Julian day:", error);
@@ -175,7 +159,7 @@ export const calculatePlanetaryPositions = (
   swisseph.swe_set_ephe_path(ephePath);
 
   // Set sidereal mode - essential for Vedic astrology
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
 
   // Get ascendant and house cusps
   const { ascendant, houseCusps } = calculateHousesWholeSign(
@@ -374,7 +358,7 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
     swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode first - IMPORTANT for Vedic calculations
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
 
     // Calculate ascendant and house cusps using Whole Sign system
     const { ascendant, houseCusps } = calculateHousesWholeSign(
@@ -460,7 +444,7 @@ export const fetchAscendant = async (birthDetails: BirthDetails) => {
     swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode first
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
 
     // Calculate ascendant
     const { ascendant } = calculateHousesWholeSign(
@@ -500,7 +484,7 @@ export const fetchHouses = async (birthDetails: BirthDetails) => {
     swisseph.swe_set_ephe_path(ephePath);
     
     // Always set the sidereal mode first
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
     
     // Calculate houses
     const { houseCusps } = calculateHousesWholeSign(
@@ -535,7 +519,7 @@ export const fetchDashas = async (birthDetails: BirthDetails) => {
     swisseph.swe_set_ephe_path(ephePath);
 
     // Always set the sidereal mode
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
 
     const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
 
@@ -561,7 +545,7 @@ export const fetchNakshatra = async (birthDetails: BirthDetails, planetName: str
     swisseph.swe_set_ephe_path(ephePath);
     
     // Set sidereal mode
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI_ICRC, 0, 0);
     
     const planetaryPositions = calculatePlanetaryPositions(julianDay, birthDetails);
     const planet = planetaryPositions.find(p => p.planet === planetName.toUpperCase());

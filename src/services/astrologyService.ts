@@ -21,6 +21,59 @@ import {
 } from '../types/astrology.js';
 import path from 'path';
 import fs from 'fs';
+import moment from 'moment-timezone';
+import { convertToUTC } from '../utils/timeUtils.js';
+
+// Swiss Ephemeris initialization state
+let swissephInitialized = false;
+
+const initializeSwissEph = () => {
+  if (swissephInitialized) return;
+
+  try {
+    const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
+    console.log('Initializing Swiss Ephemeris with path:', ephePath);
+    
+    swisseph.swe_set_ephe_path(ephePath);
+    
+    // Test calculation
+    const testDate = new Date();
+    const jd = swisseph.swe_julday(
+      testDate.getFullYear(),
+      testDate.getMonth() + 1,
+      testDate.getDate(),
+      testDate.getHours(),
+      swisseph.SE_GREG_CAL
+    );
+    
+    const result = swisseph.swe_calc_ut(jd, swisseph.SE_SUN, swisseph.SEFLG_SWIEPH);
+    if ('error' in result) {
+      throw new Error(`Swiss Ephemeris test calculation failed: ${result.error}`);
+    }
+    
+    swissephInitialized = true;
+    console.log('Swiss Ephemeris initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Swiss Ephemeris:', error);
+    throw error;
+  }
+};
+
+// Initialize Swiss Ephemeris when module is loaded
+initializeSwissEph();
+
+// Logging utility
+const logAstrologyCalculation = (stage: string, input: any, output: any, error?: any) => {
+  console.log(`[Astrology Calculation] ${stage}:`, {
+    timestamp: new Date().toISOString(),
+    input,
+    output,
+    error: error ? {
+      message: error.message,
+      stack: error.stack
+    } : undefined
+  });
+};
 
 /**
  * Normalize angle to range [0, 360)
@@ -31,85 +84,27 @@ const normalizeAngle = (angle: number): number => {
 
 /**
  * Convert date and time to Julian day
- * This function handles timezone conversion manually for accuracy
+ * This function now uses the timeUtils for timezone conversion
  */
 const getJulianDay = (birthDetails: BirthDetails): number => {
   try {
-    const { date, time, timezone } = birthDetails;
-
-    // Parse timezone offset from the timezone string (e.g., "+07:00" or "-05:30")
-    const tzMatch = timezone.match(/([+-])(\d{2}):(\d{2})/);
-    if (!tzMatch) {
-      throw new Error(`Invalid timezone format: ${timezone}`);
-    }
-
-    const [_, sign, hours, minutes] = tzMatch;
-    const offsetHours = parseInt(hours);
-    const offsetMinutes = parseInt(minutes);
-    const totalOffset = (sign === '+' ? -1 : 1) * (offsetHours + offsetMinutes / 60);
-
-    // Parse local date and time
-    const [year, month, day] = date.split('-').map(num => parseInt(num));
-    const [hour, minute, second = '0'] = time.split(':').map(num => parseInt(num));
-
-    // Convert to UTC
-    let utcHour = hour;
-    let utcMinute = minute;
-    let utcDay = day;
-    let utcMonth = month;
-    let utcYear = year;
-
-    // Adjust hours by timezone offset
-    utcHour += totalOffset;
-
-    // Handle day boundary crossings
-    if (utcHour >= 24) {
-      utcHour -= 24;
-      utcDay += 1;
-    } else if (utcHour < 0) {
-      utcHour += 24;
-      utcDay -= 1;
-    }
-
-    // Handle month/year boundary crossings
-    const daysInMonth = new Date(year, month, 0).getDate();
-    if (utcDay > daysInMonth) {
-      utcDay = 1;
-      utcMonth += 1;
-      if (utcMonth > 12) {
-        utcMonth = 1;
-        utcYear += 1;
-      }
-    } else if (utcDay < 1) {
-      utcMonth -= 1;
-      if (utcMonth < 1) {
-        utcMonth = 12;
-        utcYear -= 1;
-      }
-      utcDay = new Date(utcYear, utcMonth, 0).getDate();
-    }
-
-    // Convert UTC to Julian Day
-    const gregflag = GREGORIAN_CALENDAR;
-    const dret = swisseph.swe_utc_to_jd(
-      utcYear,
-      utcMonth,
-      utcDay,
-      utcHour,
-      utcMinute,
-      parseInt(second.toString()),
-      gregflag
+    // Convert local time to UTC using the utility function
+    const utcDateTime = convertToUTC(birthDetails);
+    
+    // Convert to Julian Day using Swiss Ephemeris
+    const julianDay = swisseph.swe_julday(
+      utcDateTime.year,
+      utcDateTime.month,
+      utcDateTime.day,
+      utcDateTime.hour + utcDateTime.minute/60.0,
+      swisseph.SE_GREG_CAL
     );
 
-    if ('error' in dret) {
-      throw new Error(`Failed to calculate Julian day: ${dret.error}`);
-    }
-
-    const julianDay = dret.julianDayUT;
-
-    console.log(`Original date/time: ${date} ${time} ${timezone}`);
-    console.log(`UTC time: ${utcYear}-${utcMonth.toString().padStart(2, '0')}-${utcDay.toString().padStart(2, '0')} ${utcHour.toString().padStart(2, '0')}:${utcMinute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`);
-    console.log(`Julian Day: ${julianDay}`);
+    console.log('Julian Day calculation:', {
+      input: birthDetails,
+      utc: utcDateTime,
+      julianDay
+    });
 
     return julianDay;
   } catch (error) {
@@ -505,10 +500,13 @@ const calculateDashas = (julianDay: number, moonLongitude: number): DashaInfo =>
  */
 export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartData> => {
   try {
-    console.log("Fetching chart data with birth details:", JSON.stringify(birthDetails));
+    logAstrologyCalculation('Start', birthDetails, null);
     
     const julianDay = getJulianDay(birthDetails);
+    logAstrologyCalculation('Julian Day', birthDetails, julianDay);
+    
     const ayanamsa = swisseph.swe_get_ayanamsa_ut(julianDay);
+    logAstrologyCalculation('Ayanamsa', julianDay, ayanamsa);
 
     // Calculate ascendant and houses
     const { ascendant, houseCusps } = calculateHousesWholeSign(
@@ -516,9 +514,11 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
       birthDetails.latitude, 
       birthDetails.longitude
     );
+    logAstrologyCalculation('Houses', { julianDay, birthDetails }, { ascendant, houseCusps });
 
     // Calculate planetary positions
     const planets = calculatePlanetaryPositions(julianDay, birthDetails);
+    logAstrologyCalculation('Planets', { julianDay, birthDetails }, planets);
 
     // Calculate houses with planets
     const houses = houseCusps.map((cusp, index) => {
@@ -542,6 +542,7 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
 
     // Calculate dashas
     const dashas = calculateDashas(julianDay, moon.longitude);
+    logAstrologyCalculation('Dashas', { julianDay, moonLongitude: moon.longitude }, dashas);
 
     const chartData: ChartData = {
       metadata: {
@@ -566,10 +567,11 @@ export const fetchChartData = async (birthDetails: BirthDetails): Promise<ChartD
       dashas
     };
 
+    logAstrologyCalculation('Complete', birthDetails, chartData);
     return chartData;
-  } catch (error: any) {
-    console.error('Error generating chart:', error);
-    throw new Error(`Failed to generate chart: ${error?.message || 'Unknown error'}`);
+  } catch (error) {
+    logAstrologyCalculation('Error', birthDetails, null, error);
+    throw error;
   }
 };
 

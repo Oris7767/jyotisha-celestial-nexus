@@ -112,3 +112,8 @@ export interface NakshatraResponse {
   nakshatra: string;
   nakshatraLord: DashaPlanet;
 }
+
+export interface ErrorResponse {
+  error: string;
+  message: string;
+}

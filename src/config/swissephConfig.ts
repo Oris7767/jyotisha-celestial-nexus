@@ -7,9 +7,9 @@ try {
   const ephePath = process.env.EPHE_PATH || path.resolve(process.cwd(), 'ephe');
   swisseph.swe_set_ephe_path(ephePath);
   
-  // Set Ayanamsa to Fagan/Bradley
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_FAGAN_BRADLEY, 0, 0);
-  console.log('Swiss Ephemeris initialized successfully with Fagan/Bradley Ayanamsa');
+  // Set Ayanamsa to Lahiri
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
+  console.log('Swiss Ephemeris initialized successfully with Lahiri Ayanamsa');
 } catch (error) {
   console.error('Error initializing Swiss Ephemeris:', error);
   throw new Error('Failed to initialize Swiss Ephemeris');
@@ -24,7 +24,7 @@ export const AYANAMSA = {
 };
 
 // Set default ayanamsa
-export const DEFAULT_AYANAMSA = AYANAMSA.FAGAN_BRADLEY;
+export const DEFAULT_AYANAMSA = AYANAMSA.LAHIRI;
 
 // Calendar type
 export const GREGORIAN_CALENDAR = swisseph.SE_GREG_CAL;
